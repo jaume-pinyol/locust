@@ -5,7 +5,6 @@ import traceback
 from StringIO import StringIO
 
 import requests
-import mock
 import gevent
 from gevent import wsgi
 
@@ -13,6 +12,7 @@ from locust import web, runners, stats
 from locust.runners import LocustRunner
 from locust.main import parse_options
 from .testcases import LocustTestCase
+
 
 class TestWebUI(LocustTestCase):
     def setUp(self):

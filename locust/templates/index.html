@@ -46,7 +46,13 @@
         </div>
     </div>
     <div class="main">
-        
+        <ul class="test-list" id="test-list">
+            {% for file in files %}
+                 <li><h2>{{ file.filename }}</h2></li>
+            {% else %}
+                <li><em>No test found. Add a test and reload the page</em>
+            {% endfor %}
+        </ul>
         <div class="start" id="start">
             <div style="position:relative;">
                 <a href="#" class="close_link">Close</a>
