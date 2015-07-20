@@ -11,10 +11,9 @@ from StringIO import StringIO
 from gevent import wsgi
 from flask import Flask, make_response, request, render_template
 
-from . import runners
-from .cache import memoize
-#from locust.main import find_all_test_in_folder
-from .runners import MasterLocustRunner
+from locust import runners
+from locust.cache import memoize
+from locust.runners import MasterLocustRunner
 from locust.stats import median_from_dict
 from locust import version
 import logging
@@ -35,23 +34,41 @@ def index():
         slave_count = runners.locust_runner.slave_count
     else:
         slave_count = 0
-    # files = find_all_test_in_folder("")
-    files = []
+
     return render_template("index.html",
                            state=runners.locust_runner.state,
                            is_distributed=is_distributed,
                            slave_count=slave_count,
                            user_count=runners.locust_runner.user_count,
                            version=version,
-                           files=files
+                           files=runners.locust_runner.files
                            )
 
 
-@app.route("/select-test", methods=["POST"])
-def select_test():
+@app.route('/test/<string:test_id>')
+def bootstrap(test_id):
+    runners.locust_runner.set_selected_locust(test_id)
+    is_distributed = isinstance(runners.locust_runner, MasterLocustRunner)
+    if is_distributed:
+        slave_count = runners.locust_runner.slave_count
+    else:
+        slave_count = 0
+
+    return render_template("test.html",
+                           state=runners.locust_runner.state,
+                           is_distributed=is_distributed,
+                           slave_count=slave_count,
+                           user_count=runners.locust_runner.user_count,
+                           version=version,
+                           files=runners.locust_runner.files,
+                           selected=runners.locust_runner.selected_locust
+                           )
+
+
+@app.route("/select-test/<string:test_id>", methods=["POST"])
+def select_test(test_id):
     assert request.method == "POST"
-    selected_test = int(request.form["test-id"])
-    runners.locust_runner.set_selected_locust(selected_test)
+    runners.locust_runner.set_selected_locust(test_id)
     response = make_response(json.dumps({'success': True, 'message': 'Test Changed'}))
     response.headers["Content-type"] = "application/json"
     return response

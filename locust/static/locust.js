@@ -25,6 +25,20 @@ $("#new_test").click(function(event) {
     $("#locust_count").focus().select();
 });
 
+$(".test").click(function(event){
+    var element = $(this);
+    var id = element.attr('id');
+
+    event.preventDefault();
+    $.post("/select-test/" + id, function(response) {
+            if (response.success) {
+                $('.test-list li').removeClass("test-selected").addClass("test");
+                element.removeClass("test").addClass("test-selected")
+            }
+        }
+    );
+});
+
 $(".edit_test").click(function(event) {
     event.preventDefault();
     $("#edit").show();

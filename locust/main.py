@@ -1,22 +1,21 @@
+from folders import find_locustfile, find_all_test_in_folder, load_locustfile
 import locust
 import runners
 
 import gevent
 import sys
-import os
 import signal
-import inspect
 import logging
 import socket
 from optparse import OptionParser
 
-import web
 from log import setup_logging, console_logger
 from stats import stats_printer, print_percentile_stats, print_error_report, print_stats
 from inspectlocust import print_task_ratio, get_task_ratio_dict
 from core import Locust, HttpLocust
 from runners import MasterLocustRunner, SlaveLocustRunner, LocalLocustRunner
 import events
+from locust import web
 
 _internals = [Locust, HttpLocust]
 version = locust.version
@@ -242,123 +241,6 @@ def parse_options():
     return parser, opts, args
 
 
-def _is_package(path):
-    """
-    Is the given path a Python package?
-    """
-    return (
-        os.path.isdir(path)
-        and os.path.exists(os.path.join(path, '__init__.py'))
-    )
-
-
-def find_all_test_in_folder(locust_directory):
-    """
-    This function will generate the file names in a directory
-    tree by walking the tree either top-down or bottom-up. For each
-    directory in the tree rooted at directory top (including top itself),
-    it yields a 3-tuple (dirpath, dirnames, filenames).
-    """
-    tests = []  # List which will store all of the full filepaths.
-
-    # Walk the tree.
-    for root, directories, files in os.walk(locust_directory):
-        for filename in files:
-            # Join the two strings in order to form the full filepath.
-            if filename.endswith('.py'):
-                file_path = os.path.join(root, filename)
-                locust_test = load_locustfile(file_path)
-                tests.append((filename, locust_test))  # Add it to the list.
-    return tests  # Self-explanatory.
-
-
-def find_locustfile(locustfile):
-    """
-    Attempt to locate a locustfile, either explicitly or by searching parent dirs.
-    """
-    # Obtain env value
-    names = [locustfile]
-    # Create .py version if necessary
-    if not names[0].endswith('.py'):
-        names += [names[0] + '.py']
-    # Does the name contain path elements?
-    if os.path.dirname(names[0]):
-        # If so, expand home-directory markers and test for existence
-        for name in names:
-            expanded = os.path.expanduser(name)
-            if os.path.exists(expanded):
-                if name.endswith('.py') or _is_package(expanded):
-                    return os.path.abspath(expanded)
-    else:
-        # Otherwise, start in cwd and work downwards towards filesystem root
-        path = '.'
-        # Stop before falling off root of filesystem (should be platform
-        # agnostic)
-        while os.path.split(os.path.abspath(path))[1]:
-            for name in names:
-                joined = os.path.join(path, name)
-                if os.path.exists(joined):
-                    if name.endswith('.py') or _is_package(joined):
-                        return os.path.abspath(joined)
-            path = os.path.join('..', path)
-            # Implicit 'return None' if nothing was found
-
-
-def is_locust(tup):
-    """
-    Takes (name, object) tuple, returns True if it's a public Locust subclass.
-    """
-    name, item = tup
-    return bool(
-        inspect.isclass(item)
-        and issubclass(item, Locust)
-        and hasattr(item, "task_set")
-        and getattr(item, "task_set")
-        and not name.startswith('_')
-    )
-
-
-def load_locustfile(path):
-    """
-    Import given locustfile path and return (docstring, callables).
-
-    Specifically, the locustfile's ``__doc__`` attribute (a string) and a
-    dictionary of ``{'name': callable}`` containing all callables which pass
-    the "is a Locust" test.
-    """
-    # Get directory and locustfile name
-    directory, locustfile = os.path.split(path)
-    # If the directory isn't in the PYTHONPATH, add it so our import will work
-    added_to_path = False
-    index = None
-    if directory not in sys.path:
-        sys.path.insert(0, directory)
-        added_to_path = True
-    # If the directory IS in the PYTHONPATH, move it to the front temporarily,
-    # otherwise other locustfiles -- like Locusts's own -- may scoop the intended
-    # one.
-    else:
-        i = sys.path.index(directory)
-        if i != 0:
-            # Store index for later restoration
-            index = i
-            # Add to front, then remove from original position
-            sys.path.insert(0, directory)
-            del sys.path[i + 1]
-    # Perform the import (trimming off the .py)
-    imported = __import__(os.path.splitext(locustfile)[0])
-    # Remove directory from path if we added it ourselves (just to be neat)
-    if added_to_path:
-        del sys.path[0]
-    # Put back in original index if we moved it
-    if index is not None:
-        sys.path.insert(index + 1, directory)
-        del sys.path[0]
-    # Return our two-tuple
-    locusts = dict(filter(is_locust, vars(imported).items()))
-    return imported.__doc__, locusts
-
-
 def main():
     parser, options, arguments = parse_options()
 
@@ -371,16 +253,17 @@ def main():
         sys.exit(0)
 
     locust_file = find_locustfile(options.locustfile)
-    test_in_locust_folder = find_all_test_in_folder(options.locustfolder)
+    tests_in_locust_folder = find_all_test_in_folder(options.testfolder)
 
-    if not locust_file and not test_in_locust_folder:
+    if not locust_file and not tests_in_locust_folder:
         logger.error("Could not find any locustfile! Ensure file ends in '.py' and see --help for available options.")
         sys.exit(1)
 
-    if not test_in_locust_folder:
+    if not tests_in_locust_folder:
         docstring, locusts = load_locustfile(locust_file)
     else:
-        docstring, locusts = test_in_locust_folder[0][1]
+        key = tests_in_locust_folder.keys()[0]
+        docstring, locusts = tests_in_locust_folder[key]["locust"]
 
     if options.list_commands:
         console_logger.info("Available Locusts:")
@@ -392,31 +275,34 @@ def main():
         logger.error("No Locust class found!")
         sys.exit(1)
 
-    # make sure specified Locust exists
-    if arguments:
-        missing = set(arguments) - set(locusts.keys())
-        if missing:
-            logger.error("Unknown Locust(s): %s\n" % (", ".join(missing)))
-            sys.exit(1)
+    locust_classes_collection = {}
+    for test_in_folder in tests_in_locust_folder:
+        docstring, locusts = test_in_folder["locust"]
+        if arguments:
+            missing = set(arguments) - set(locusts.keys())
+            if missing:
+                logger.error("Unknown Locust(s): %s\n" % (", ".join(missing)))
+                sys.exit(1)
+            else:
+                names = set(arguments) & set(locusts.keys())
+                tests_in_locust_folder[test_in_folder.id]["locust"] = [locusts[n] for n in names]
         else:
-            names = set(arguments) & set(locusts.keys())
-            locust_classes = [locusts[n] for n in names]
-    else:
-        locust_classes = locusts.values()
+            tests_in_locust_folder[test_in_folder.id]["locust"] = locusts.values()
+    # make sure specified Locust exists
 
     if options.show_task_ratio:
         console_logger.info("\n Task ratio per locust class")
         console_logger.info("-" * 80)
-        print_task_ratio(locust_classes)
+        print_task_ratio(tests_in_locust_folder[0]["locust"])
         console_logger.info("\n Total task ratio")
         console_logger.info("-" * 80)
-        print_task_ratio(locust_classes, total=True)
+        print_task_ratio(locust_classes_collection[0]["locust"], total=True)
         sys.exit(0)
     if options.show_task_ratio_json:
         from json import dumps
         task_data = {
-            "per_class": get_task_ratio_dict(locust_classes),
-            "total": get_task_ratio_dict(locust_classes, total=True)
+            "per_class": get_task_ratio_dict(locust_classes_collection[0]["locust"]),
+            "total": get_task_ratio_dict(locust_classes_collection[0]["locust"], total=True)
         }
         console_logger.info(dumps(task_data))
         sys.exit(0)
@@ -430,19 +316,22 @@ def main():
     if not options.no_web and not options.slave:
         # spawn web greenlet
         logger.info("Starting web monitor at %s:%s" % (options.web_host or "*", options.port))
-        main_greenlet = gevent.spawn(web.start, locust_classes, options)
+        main_greenlet = gevent.spawn(web.start, locust_classes_collection[0],  options)
 
     if not options.master and not options.slave:
-        runners.locust_runner = LocalLocustRunner(locust_classes, options)
+        for test_in_folder in tests_in_locust_folder:
+            locust_runner = LocalLocustRunner(test_in_folder["locust"], tests_in_locust_folder, options)
+            runners.locust_runner = LocalLocustRunner(locust_runner, tests_in_locust_folder, options)
+
         # spawn client spawning/hatching greenlet
         if options.no_web:
             runners.locust_runner.start_hatching(wait=True)
             main_greenlet = runners.locust_runner.greenlet
     elif options.master:
-        runners.locust_runner = MasterLocustRunner(locust_classes, options)
+        runners.locust_runner = MasterLocustRunner(locust_classes, tests_in_locust_folder, options)
     elif options.slave:
         try:
-            runners.locust_runner = SlaveLocustRunner(locust_classes, options)
+            runners.locust_runner = SlaveLocustRunner(locust_classes, tests_in_locust_folder, options)
             main_greenlet = runners.locust_runner.greenlet
         except socket.error, e:
             logger.error("Failed to connect to the Locust master: %s", e)
