@@ -49,7 +49,10 @@ def index():
 @app.route('/test/<string:test_id>')
 def bootstrap(test_id):
     test_runner = get_runner(test_id)
-    test_runner.set_selected_locust(test_id)
+    changed = False
+    if test_runner.selected_locust != test_id:
+        changed = test_runner.set_selected_locust(test_id)
+
     is_distributed = isinstance(test_runner, MasterLocustRunner)
     if is_distributed:
         slave_count = test_runner.slave_count
@@ -67,17 +70,9 @@ def bootstrap(test_id):
                            user_count=test_runner.user_count,
                            version=version,
                            files=files,
-                           selected=test_id
+                           selected=test_runner.selected_locust,
+                           changed=changed
                            )
-
-
-# @app.route("/select-test/<string:test_id>", methods=["POST"])
-# def select_test(test_id):
-#    assert request.method == "POST"
-#    runners.locust_runner.set_selected_locust(test_id)
-#    response = make_response(json.dumps({'success': True, 'message': 'Test Changed'}))
-#    response.headers["Content-type"] = "application/json"
-#    return response
 
 
 @app.route('/swarm', methods=["POST"])
@@ -222,15 +217,15 @@ def distribution_stats_csv(runner):
 
 
 @app.route('/stats/requests')
-@memoize(timeout=DEFAULT_CACHE_TIME, dynamic_timeout=True)
+#@memoize(timeout=DEFAULT_CACHE_TIME, dynamic_timeout=True)
 def request_stats_single():
     return request_stats(runners.locust_runner)
 
 
-#@app.route('/test/<string:test_id>/stats/requests')
-#@memoize(timeout=DEFAULT_CACHE_TIME, dynamic_timeout=True)
-#def request_test_stats(test_id):
-#    return request_stats(get_runner(test_id))
+@app.route('/test/<string:test_id>/stats/requests')
+@memoize(timeout=DEFAULT_CACHE_TIME, dynamic_timeout=True)
+def request_test_stats(test_id):
+    return request_stats(get_runner(test_id))
 
 
 def request_stats(runner):

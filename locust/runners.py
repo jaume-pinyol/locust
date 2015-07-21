@@ -151,9 +151,7 @@ class LocustRunner(object):
 
     def start_hatching(self, locust_count=None, hatch_rate=None, wait=False):
         if self.state != STATE_RUNNING and self.state != STATE_HATCHING:
-            self.stats.clear_all()
-            self.stats.start_time = time()
-            self.exceptions = {}
+            self.clear_all()
             events.locust_start_hatching.fire()
 
         # Dynamically changing the locust count
@@ -179,11 +177,21 @@ class LocustRunner(object):
             else:
                 self.spawn_locusts(wait=wait)
 
+    def clear_all(self):
+        self.stats.clear_all()
+        self.stats.start_time = time()
+        self.exceptions = {}
+
     def set_selected_locust(self, selected):
-        if selected in self.files:
+        if selected in self.files and (self.state == STATE_INIT or self.state == STATE_STOPPED):
+            self.clear_all()
+            self.state = STATE_INIT
+            self.stats.reset_all()
             self.selected_locust = selected
             logger.info("Selected: %s" % selected)
             logger.info("Files: %s" % self.files)
+            return True
+        return False
 
     def get_selected_locust(self):
         return self.files[self.selected_locust]["locust"]
@@ -296,6 +304,7 @@ class MasterLocustRunner(DistributedLocustRunner):
         self.num_clients = locust_count
         slave_num_clients = locust_count / (num_slaves or 1)
         slave_hatch_rate = float(hatch_rate) / (num_slaves or 1)
+        test = self.selected_locust
         remaining = locust_count % num_slaves
 
         logger.info("Sending hatch jobs to %d ready clients", num_slaves)
@@ -311,7 +320,8 @@ class MasterLocustRunner(DistributedLocustRunner):
                 "num_clients": slave_num_clients,
                 "num_requests": self.num_requests,
                 "host": self.host,
-                "stop_timeout": None
+                "stop_timeout": None,
+                "test": test
             }
 
             if remaining > 0:
@@ -419,6 +429,8 @@ class SlaveLocustRunner(DistributedLocustRunner):
                 # self.num_clients = job["num_clients"]
                 self.num_requests = job["num_requests"]
                 self.host = job["host"]
+                self.selected_locust = job["test"]
+                logger.info("running test: %s" % self.selected_locust)
                 self.hatching_greenlet = gevent.spawn(
                     lambda: self.start_hatching(locust_count=job["num_clients"], hatch_rate=job["hatch_rate"]))
             elif msg.type == "stop":

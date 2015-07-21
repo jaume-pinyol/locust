@@ -2,192 +2,231 @@
 <html>
 <head> 
     <title>Locust</title> 
-    <link rel="stylesheet" type="text/css" href="/static/style.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="/static/css/bootstrap.min.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="/static/css/style.css" media="screen">
     <link rel="shortcut icon" href="/static/img/favicon.ico" type="image/x-icon"/>
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head> 
 <body class="{{state}}">
-    <div class="top">
-        <div class="top_content">
-            <img src="/static/img/logo.png" class="logo" onclick="$('.about').fadeIn();" />
-            <div class="boxes">
-                <div class="top_box box_status">
-                    <div class="label">STATUS</div>
-                    <div class="value" id="status_text">
-                        {{state}}
-                    </div>
-                    <div class="user_count">
-                        <span id="userCount">{{user_count}}</span> users
-                    </div>
-                    <a href="#" class="new_test" id="new_test">New test</a>
-                    <a href="#" class="edit_test">Edit</a>
-                </div>
-                {% if is_distributed %}
-                    <div class="top_box box_slaves" id="box_rps">
-                        <div class="label">SLAVES</div>
-                        <div class="value" id="slaveCount">{{slave_count}}</div>
-                    </div>
-                {% endif %}
-                <div class="top_box box_rps box_running" id="box_rps">
-                    <div class="label">RPS</div>
-                    <div class="value" id="total_rps">0</div>
-                </div>
-                <div class="top_box box_fail box_running" id="box_fail">
-                    <div class="label">FAILURES</div>
-                    <div class="value"><span id="fail_ratio"></span>%</div>
-                </div>
-                <div class="top_box box_stop box_running" id="box_stop">
-                    <a href="/stop"><img src="/static/img/stop.png" style="border:0;"></a>
-                </div>
-                <div class="top_box box_stop box_running" id="box_reset">
-                    <a href="/stats/reset">Reset Stats</a>
-                </div>
+    <div style="display: none;" id="test_id" data-value="{{ selected }}"></div>
+    <nav class="navbar navbar-default">
+        <div class="container-fluid">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+                <img src="/static/img/logo.png" class="logo" onclick="$('.about').fadeIn();" />
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+              <a class="navbar-brand" href="#">Locusts</a>
             </div>
-            <div style="clear:both;"></div>
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav">
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                            {% if files %}
+                                {{ files[selected].filename }}
+                            {% endif %}
+                            <span class="caret"></span></a>
+                            <ul class="dropdown-menu">
+                               {% for key, value in files.iteritems() %}
+                                     <li><a href="/test/{{ value.filename }}" id="{{ value.id }}">{{ value.filename }}</a></li>
+                               {% else %}
+                                    <li><em>No test found. Add a test and reload the page</em>
+                               {% endfor %}
+                            </ul>
+                    </li>
+                    <li class="boxes">
+                        <a href="#" class="new_test" id="new_test">New test</a>
+                        <a href="#" class="edit_test">Edit</a>
+                    </li>
+                </ul>
+                <ul class="nav navbar-nav navbar-right boxes">
+                    <li class="top_box box_status">
+                        <div class="label">STATUS</div>
+                        <div class="value" id="status_text">
+                            {{state}}
+                        </div>
+                    </li>
+                    <li class="top_box box_status">
+                        <div class="label">Users</div>
+                        <div class="user_count">
+                            <span id="userCount">{{user_count}}</span> users
+                        </div>
+                    </li>
+                    {% if is_distributed %}
+                        <li class="top_box box_slaves" id="box_rps">
+                            <div class="label">SLAVES</div>
+                            <div class="value" id="slaveCount">{{slave_count}}</div>
+                        </li>
+                    {% endif %}
+                    <li class="top_box box_rps box_running" id="box_rps">
+                        <div class="label">RPS</div>
+                        <div class="value" id="total_rps">0</div>
+                    </li>
+                    <li class="top_box box_fail box_running" id="box_fail">
+                        <div class="label">FAILURES</div>
+                        <div class="value"><span id="fail_ratio"></span>%</div>
+                    </li>
+                    <li class="top_box box_stop box_running" id="box_stop">
+                        <button id="stop_test" data-action="/test/{{ selected }}/stop" type="button" class="btn btn-primary">Stop</button>
+                    </li>
+                    <li class="top_box box_stop box_running" id="box_reset">
+                        <a href="/test/{{ selected }}/stats/reset">Reset Stats</a>
+                    </li>
+              </ul>
+            </div><!-- /.navbar-collapse -->
         </div>
-    </div>
-    <div class="main">
-        <ul class="test-list" id="test-list">
-            {% for file in files %}
-                 <li><h2>{{ file.filename }}</h2></li>
-            {% else %}
-                <li><em>No test found. Add a test and reload the page</em>
-            {% endfor %}
-        </ul>
-        <div class="start" id="start">
-            <div style="position:relative;">
-                <a href="#" class="close_link">Close</a>
-            </div>
-            <div class="padder">
-                <h2>Start new Locust swarm</h2>
-                <form action="/swarm" method="POST" id="swarm_form">
-                    <label for="locust_count">Number of users to simulate</label>
-                    <input type="text" name="locust_count" id="locust_count" class="val" /><br>
-                    <label for="hatch_rate">Hatch rate <span style="color:#8a8a8a;">(users spawned/second)</span></label>
-                    <input type="text" name="hatch_rate" id="hatch_rate" class="val" /><br>
-                    <input type="image" src="/static/img/start_button.png" value="Start swarming" class="start_button">
-                </form>
-                <div style="clear:right;"></div>
+        <div style="clear:both;"></div>
+    </nav>
+
+    <div class="container">
+        <div class="row">
+            <div class="main">
+                <div class="start" id="start">
+                    <div style="position:relative;">
+                        <a href="#" class="close_link">Close</a>
+                    </div>
+                    <div class="padder">
+                        <h2>Start new Locust swarm</h2>
+                        <form action="/test/{{ selected }}/swarm" method="POST" id="swarm_form">
+                            <div class="form-group">
+                                <label for="locust_count">Number of users to simulate</label>
+                                <input class="form-control" type="text" name="locust_count" id="locust_count" class="val" />
+                            </div>
+                            <div class="form-group">
+                                <label for="hatch_rate">Hatch rate <span style="color:#8a8a8a;">(users spawned/second)</span></label>
+                                <input class="form-control" type="text" name="hatch_rate" id="hatch_rate" class="val" />
+                            </div>
+                            <button type="submit" class="btn btn-default start_button">Start swarming</button>
+                        </form>
+                        <div style="clear:right;"></div>
+                    </div>
+                </div>
+
+                <div class="edit" id="edit">
+                    <div style="position:relative;">
+                        <a href="#" class="close_link">Close</a>
+                    </div>
+                    <div class="padder">
+                        <h2>Change the locust count</h2>
+                        <form action="/test/{{ selected }}/swarm" method="POST" id="edit_form">
+                            <div class="form-group">
+                               <label for="locust_count">Number of users to simulate</label>
+                                <input  class="form-control" type="text" name="locust_count" id="new_locust_count" class="val" />
+                            </div>
+                            <div class="form-group">
+                               <label for="hatch_rate">Hatch rate <span style="color:#8a8a8a;">(users spawned/second)</span></label>
+                                <input  class="form-control" type="text" name="hatch_rate" id="new_hatch_rate" class="val" />
+                            </div>
+                            <button type="submit" class="btn btn-default start_button">Start swarming</button>
+                        </form>
+                        <div style="clear:right;"></div>
+                    </div>
+                </div>
+                <div class="status" id="status">
+                    <div class="status" id="status">
+                         <ul class="tabs nav nav-tabs list-inline">
+                            <li><a href="#tab-statistics">Statistics</a></li>
+                            <li><a href="#tab-failures">Failures</a></li>
+                            <li><a href="#tab-exceptions">Exceptions</a></li>
+                            <li><a href="#tab-downloads">Download Data</a></li>
+                        </ul>
+                        <div id="tab-statistics">
+                            <table id="stats" class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th class="stats_label" href="#" data-sortkey="method">Type</th>
+                                        <th class="stats_label" href="#" data-sortkey="name">Name</th>
+                                        <th class="stats_label numeric" href="#" data-sortkey="num_requests" title="Number of successful requests"># requests</th>
+                                        <th class="stats_label numeric" href="#" data-sortkey="num_failures" title="Number of failures"># fails</th>
+                                        <th class="stats_label numeric" href="#" data-sortkey="median_response_time" title="Median response time">Median</th>
+                                        <th class="stats_label numeric" href="#" data-sortkey="avg_response_time" title="Average response time">Average</th>
+                                        <th class="stats_label numeric" href="#" data-sortkey="min_response_time" title="Min response time">Min</th>
+                                        <th class="stats_label numeric" href="#" data-sortkey="max_response_time" title="Max response time">Max</th>
+                                        <th class="stats_label numeric" href="#" data-sortkey="avg_content_length" title="Average response size">Content Size</th>
+                                        <th class="stats_label numeric" href="#" data-sortkey="current_rps" title="Current number of requests per second"># reqs/sec</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="tab-failures">
+                            <table id="errors" class="table table-hover">
+                                <thead>
+                                    <th class="error_count stats_label" data-sortkey="1"># fails</th>
+                                    <th class="stats_label" href="#" data-sortkey="method">Method</th>
+                                    <th class="stats_label" href="#" data-sortkey="name">Name</th>
+                                    <th class="error_type stats_label" data-sortkey="0">Type</th>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>                        </div>
+                        <div id="tab-exceptions">
+                            <table id="exceptions" class="table table-hover">
+                                <thead>
+                                    <th class="exception_occurences stats_label" data-sortkey="1"># occurences</th>
+                                    <th class="exception_traceback stats_label" data-sortkey="0">Traceback</th>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="tab-downloads">
+                            <div style="margin-top:20px;">
+                                <a href="/test/{{ selected }}/stats/requests/csv">Download request statistics CSV</a><br>
+                                <a href="/test/{{ selected }}/stats/distribution/csv">Download response time distribution CSV</a><br>
+                                <a href="/test/{{ selected }}/exceptions/csv">Download exceptions CSV</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="about" style="display:none;">
+                    <div style="position:relative;">
+                        <a href="#" class="close_link">Close</a>
+                    </div>
+                    <div class="padder">
+                        <h1>About</h1>
+                        <p>
+                            The original idea for Locust was Carl Byström's who made a first proof of concept in June 2010.
+                            Jonatan Heyman picked up Locust in January 2011, implemented the current concept of Locust classes
+                            and made it work distributed across multiple machines.
+                        </p>
+                        <p>
+                            Jonatan, Carl and Joakim Hamrén has continued the development of Locust at their job,
+                            ESN Social Software, who have adopted Locust as an inhouse Open Source project.
+                        </p>
+
+                        <h1>Authors and Copyright</h1>
+                        <a href="http://cgbystrom.com/">Carl Byström</a> (<a href="http://twitter.com/cgbystrom/">@cgbystrom</a>)<br>
+                        <a href="http://heyman.info/">Jonatan Heyman</a> (<a href="http://twitter.com/jonatanheyman/">@jonatanheyman</a>)<br>
+                        Joakim Hamrén (<a href="http://twitter.com/Jahaaja/">@jahaaja</a>)<br>
+                        <a href="http://esn.me/">ESN Social Software</a> (<a href="http://twitter.com/uprise_ea/">@uprise_ea</a>)<br>
+                        Hugo Heyman (<a href="http://twitter.com/hugoheyman/">@hugoheyman</a>)
+
+
+                        <h1>License</h1>
+                        Open source licensed under the MIT license.
+
+                        <h1>Version</h1>
+                        {{version}}<br>
+                        <a href="http://locust.io/">http://locust.io</a>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="edit" id="edit">
-            <div style="position:relative;">
-                <a href="#" class="close_link">Close</a>
-            </div>
-            <div class="padder">
-                <h2>Change the locust count</h2>
-                <form action="/swarm" method="POST" id="edit_form">
-                    <label for="locust_count">Number of users to simulate</label>
-                    <input type="text" name="locust_count" id="new_locust_count" class="val" /><br>
-                    <label for="hatch_rate">Hatch rate <span style="color:#8a8a8a;">(users spawned/second)</span></label>
-                    <input type="text" name="hatch_rate" id="new_hatch_rate" class="val" /><br>
-                    <input type="image" src="/static/img/start_button.png" value="Start swarming" class="start_button">
-                </form>
-                <div style="clear:right;"></div>
-            </div>
-        </div>
-        
-        <div class="status" id="status">
-            <ul class="tabs">
-                <li><a href="#">Statistics</a></li>
-                <li><a href="#">Failures</a></li>
-                <li><a href="#">Exceptions</a></li>
-                <li><a href="#">Download Data</a></li>
-            </ul>
-            <div style="clear:left;"></div>
-            <div class="panes">
-                <div style="display:none;">
-                    <table id="stats" class="stats">
-                        <thead>
-                            <tr>
-                                <th class="stats_label" href="#" data-sortkey="method">Type</th>
-                                <th class="stats_label" href="#" data-sortkey="name">Name</th>
-                                <th class="stats_label numeric" href="#" data-sortkey="num_requests" title="Number of successful requests"># requests</th>
-                                <th class="stats_label numeric" href="#" data-sortkey="num_failures" title="Number of failures"># fails</th>
-                                <th class="stats_label numeric" href="#" data-sortkey="median_response_time" title="Median response time">Median</th>
-                                <th class="stats_label numeric" href="#" data-sortkey="avg_response_time" title="Average response time">Average</th>
-                                <th class="stats_label numeric" href="#" data-sortkey="min_response_time" title="Min response time">Min</th>
-                                <th class="stats_label numeric" href="#" data-sortkey="max_response_time" title="Max response time">Max</th>
-                                <th class="stats_label numeric" href="#" data-sortkey="avg_content_length" title="Average response size">Content Size</th>
-                                <th class="stats_label numeric" href="#" data-sortkey="current_rps" title="Current number of requests per second"># reqs/sec</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        </tbody>
-                    </table>
-                </div>
-                <div style="display:none;">
-                    <table id="errors" class="stats">
-                        <thead>
-                            <th class="error_count stats_label" data-sortkey="1"># fails</th>
-                            <th class="stats_label" href="#" data-sortkey="method">Method</th>
-                            <th class="stats_label" href="#" data-sortkey="name">Name</th>
-                            <th class="error_type stats_label" data-sortkey="0">Type</th>
-                        </thead>
-                        <tbody>
-                        </tbody>
-                    </table>
-                </div>
-                <div style="display:none;">
-                    <table id="exceptions" class="stats">
-                        <thead>
-                            <th class="exception_occurences stats_label" data-sortkey="1"># occurences</th>
-                            <th class="exception_traceback stats_label" data-sortkey="0">Traceback</th>
-                        </thead>
-                        <tbody>
-                        </tbody>
-                    </table>
-                </div>
-                <div style="display:none;">
-                    <div style="margin-top:20px;">
-                        <a href="/stats/requests/csv">Download request statistics CSV</a><br>
-                        <a href="/stats/distribution/csv">Download response time distribution CSV</a><br>
-                        <a href="/exceptions/csv">Download exceptions CSV</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="about" style="display:none;">
-            <div style="position:relative;">
-                <a href="#" class="close_link">Close</a>
-            </div>
-            <div class="padder">
-                <h1>About</h1>
-                <p>
-                    The original idea for Locust was Carl Byström's who made a first proof of concept in June 2010. 
-                    Jonatan Heyman picked up Locust in January 2011, implemented the current concept of Locust classes
-                    and made it work distributed across multiple machines.
-                </p>                
-                <p>
-                    Jonatan, Carl and Joakim Hamrén has continued the development of Locust at their job, 
-                    ESN Social Software, who have adopted Locust as an inhouse Open Source project.
-                </p>
-                
-                <h1>Authors and Copyright</h1>
-                <a href="http://cgbystrom.com/">Carl Byström</a> (<a href="http://twitter.com/cgbystrom/">@cgbystrom</a>)<br>
-                <a href="http://heyman.info/">Jonatan Heyman</a> (<a href="http://twitter.com/jonatanheyman/">@jonatanheyman</a>)<br>
-                Joakim Hamrén (<a href="http://twitter.com/Jahaaja/">@jahaaja</a>)<br>
-                <a href="http://esn.me/">ESN Social Software</a> (<a href="http://twitter.com/uprise_ea/">@uprise_ea</a>)<br>
-                Hugo Heyman (<a href="http://twitter.com/hugoheyman/">@hugoheyman</a>)
-                
-                
-                <h1>License</h1>
-                Open source licensed under the MIT license.
-                
-                <h1>Version</h1>
-                {{version}}<br>
-                <a href="http://locust.io/">http://locust.io</a>
-            </div>
-        </div>
     </div>
 
-    <script type="text/javascript" src="/static/jquery-1.4.min.js"></script>
+    <script type="text/javascript" src="/static/js/jquery-1.11.3.min.js"></script>
     <script type="text/javascript" src="/static/jquery.jqote2.min.js"></script>
     <script type="text/javascript" src="/static/jquery.tools.min.js"></script>
     <script type="text/x-jqote-template" id="stats-template">
         <![CDATA[
-        <tr class="<%=(alternate ? "dark" : "")%> <%=(this.name == "Total" ? "total" : "")%>">
+        <tr class="<%=(this.name == 'Total' ? 'total info' : '')%>">
             <td><%= (this.method ? this.method : "") %></td>
             <td><%= this.name %></td>
             <td class="numeric"><%= this.num_requests %></td>
@@ -204,7 +243,7 @@
     </script>
     <script type="text/x-jqote-template" id="errors-template">
         <![CDATA[
-        <tr class="<%=(alternate ? "dark" : "")%>">
+        <tr class="<%=(alternate ? 'dark' : '')%>">
             <td><%= this.occurences %></td>
             <td><%= this.method %></td>
             <td><%= this.name %></td>
@@ -215,14 +254,17 @@
     </script>
     <script type="text/x-jqote-template" id="exceptions-template">
         <![CDATA[
-        <tr class="<%=(alternate ? "dark" : "")%>">
+        <tr class="<%=(alternate ? 'dark' : '')%>">
             <td class="occurences"><%= this.count %></td>
-            <td class="traceback" title="Occured on: <%= this.nodes %>"><%= function(e) { return e.replace("<", "&lt;"); }(this.traceback) %>
-<%= function(e) { return e.replace("<", "&lt;"); }(this.msg) %></td>
+            <td class="traceback" title="Occured on: <%= this.nodes %>">
+                <%= function(e) { return e.replace("<", "&lt;"); }(this.traceback) %>
+                <%= function(e) { return e.replace("<", "&lt;"); }(this.msg) %></td>
         </tr>
         <% alternate = !alternate; %>
         ]]>
     </script>
     <script type="text/javascript" src="/static/locust.js"></script>
+    <script type="text/javascript" src="/static/js/bootstrap.min.js"></script>
+
 </body>
 </html>

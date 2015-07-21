@@ -1,10 +1,20 @@
 $(window).ready(function() {
-    if($("#locust_count").length > 0) {
+    if (0 < $("#locust_count").length) {
         $("#locust_count").focus().select();
     }
 });
 
-$("#box_stop a").click(function(event) {
+$("#stop_test").click(function(event){
+    event.preventDefault();
+    $.get($(this).data("action"));
+    $("body").attr("class", "stopped");
+    $(".box_stop").hide();
+    $("a.new_test").show();
+    $("a.edit_test").hide();
+    $(".user_count").hide();
+});
+
+$("#box_stop").find("a").click(function(event) {
     event.preventDefault();
     $.get($(this).attr("href"));
     $("body").attr("class", "stopped");
@@ -14,7 +24,7 @@ $("#box_stop a").click(function(event) {
     $(".user_count").hide();
 });
 
-$("#box_reset a").click(function(event) {
+$("#box_reset").find("a").click(function(event) {
     event.preventDefault();
     $.get($(this).attr("href"));
 });
@@ -38,7 +48,8 @@ $(".close_link").click(function(event) {
 
 var alternate = false;
 
-$("ul.tabs").tabs("div.panes > div");
+$("#status").tabs();
+
 
 var stats_tpl = $('#stats-template');
 var errors_tpl = $('#errors-template');
@@ -54,7 +65,7 @@ $('#swarm_form').submit(function(event) {
                 $("#status").fadeIn();
                 $(".box_running").fadeIn();
                 $("a.new_test").fadeOut();
-                $("a.edit_test").fadeIn();
+                $("li.edit_test").fadeIn();
                 $(".user_count").fadeIn();
             }
         }
@@ -86,7 +97,7 @@ var sortBy = function(field, reverse, primer){
        if (a>b) return reverse * 1;
        return 0;
     }
-}
+};
 
 // Sorting by column
 var sortAttribute = "name";
@@ -124,17 +135,17 @@ function updateStats() {
         if (typeof report.slave_count !== "undefined")
             $("#slaveCount").html(report.slave_count)
 
-        $('#stats tbody').empty();
-        $('#errors tbody').empty();
+        $("#stats").find('tbody').empty();
+        $("#errors").find('tbody').empty();
 
         alternate = false;
 
         totalRow = report.stats.pop()
         sortedStats = (report.stats).sort(sortBy(sortAttribute, desc))
         sortedStats.push(totalRow)
-        $('#stats tbody').jqoteapp(stats_tpl, sortedStats);
+        $("#stats").find('tbody').jqoteapp(stats_tpl, sortedStats);
         alternate = false;
-        $('#errors tbody').jqoteapp(errors_tpl, (report.errors).sort(sortBy(sortAttribute, desc)));
+        $('#errors').find('tbody').jqoteapp(errors_tpl, (report.errors).sort(sortBy(sortAttribute, desc)));
         setTimeout(updateStats, 2000);
     });
 }
@@ -142,8 +153,8 @@ updateStats();
 
 function updateExceptions() {
     $.get('/test/' + test_id() + '/exceptions', function (data) {
-        $('#exceptions tbody').empty();
-        $('#exceptions tbody').jqoteapp(exceptions_tpl, data.exceptions);
+        $('#exceptions').find('tbody').empty();
+        $('#exceptions').find('tbody').jqoteapp(exceptions_tpl, data.exceptions);
         setTimeout(updateExceptions, 5000);
     });
 }
