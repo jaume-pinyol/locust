@@ -275,9 +275,10 @@ def main():
         logger.error("No Locust class found!")
         sys.exit(1)
 
-    locust_classes_collection = {}
+    main_test = None
     for test_in_folder in tests_in_locust_folder:
-        docstring, locusts = test_in_folder["locust"]
+        logger.info("test: %s" %(test_in_folder))
+        docstring, locusts = tests_in_locust_folder[test_in_folder]["locust"]
         if arguments:
             missing = set(arguments) - set(locusts.keys())
             if missing:
@@ -285,24 +286,25 @@ def main():
                 sys.exit(1)
             else:
                 names = set(arguments) & set(locusts.keys())
-                tests_in_locust_folder[test_in_folder.id]["locust"] = [locusts[n] for n in names]
+                tests_in_locust_folder[test_in_folder]["locust"] = [locusts[n] for n in names]
         else:
-            tests_in_locust_folder[test_in_folder.id]["locust"] = locusts.values()
+            tests_in_locust_folder[test_in_folder]["locust"] = locusts.values()
+        main_test = test_in_folder
     # make sure specified Locust exists
 
     if options.show_task_ratio:
         console_logger.info("\n Task ratio per locust class")
         console_logger.info("-" * 80)
-        print_task_ratio(tests_in_locust_folder[0]["locust"])
+        print_task_ratio(tests_in_locust_folder[main_test]["locust"])
         console_logger.info("\n Total task ratio")
         console_logger.info("-" * 80)
-        print_task_ratio(locust_classes_collection[0]["locust"], total=True)
+        print_task_ratio(tests_in_locust_folder[main_test]["locust"], total=True)
         sys.exit(0)
     if options.show_task_ratio_json:
         from json import dumps
         task_data = {
-            "per_class": get_task_ratio_dict(locust_classes_collection[0]["locust"]),
-            "total": get_task_ratio_dict(locust_classes_collection[0]["locust"], total=True)
+            "per_class": get_task_ratio_dict(tests_in_locust_folder[main_test]["locust"]),
+            "total": get_task_ratio_dict(tests_in_locust_folder[main_test]["locust"], total=True)
         }
         console_logger.info(dumps(task_data))
         sys.exit(0)
@@ -316,22 +318,19 @@ def main():
     if not options.no_web and not options.slave:
         # spawn web greenlet
         logger.info("Starting web monitor at %s:%s" % (options.web_host or "*", options.port))
-        main_greenlet = gevent.spawn(web.start, locust_classes_collection[0],  options)
+        main_greenlet = gevent.spawn(web.start, tests_in_locust_folder[main_test]["locust"],  options)
 
     if not options.master and not options.slave:
-        for test_in_folder in tests_in_locust_folder:
-            locust_runner = LocalLocustRunner(test_in_folder["locust"], tests_in_locust_folder, options)
-            runners.locust_runner = LocalLocustRunner(locust_runner, tests_in_locust_folder, options)
-
+        runners.locust_runner = LocalLocustRunner(tests_in_locust_folder, options)
         # spawn client spawning/hatching greenlet
         if options.no_web:
             runners.locust_runner.start_hatching(wait=True)
             main_greenlet = runners.locust_runner.greenlet
     elif options.master:
-        runners.locust_runner = MasterLocustRunner(locust_classes, tests_in_locust_folder, options)
+        runners.locust_runner = MasterLocustRunner(tests_in_locust_folder, options)
     elif options.slave:
         try:
-            runners.locust_runner = SlaveLocustRunner(locust_classes, tests_in_locust_folder, options)
+            runners.locust_runner = SlaveLocustRunner(tests_in_locust_folder, options)
             main_greenlet = runners.locust_runner.greenlet
         except socket.error, e:
             logger.error("Failed to connect to the Locust master: %s", e)

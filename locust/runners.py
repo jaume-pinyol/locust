@@ -26,12 +26,10 @@ SLAVE_REPORT_INTERVAL = 3.0
 
 
 class LocustRunner(object):
-    def __init__(self, locust_classes, files, options):
+    def __init__(self, files, options):
         self.test_folder = options.testfolder
         self.files = files
         self.selected_locust = files.keys()[0]
-        docstring, locusts = files[self.selected_locust]["locust"]
-        self.locust_classes = locust_classes
         self.hatch_rate = options.hatch_rate
         self.num_clients = options.num_clients
         self.num_requests = options.num_requests
@@ -71,8 +69,8 @@ class LocustRunner(object):
         returns a list "bucket" with the weighted locusts
         """
         bucket = []
-        weight_sum = sum((locust.weight for locust in self.locust_classes if locust.task_set))
-        for locust in self.locust_classes:
+        weight_sum = sum((locust.weight for locust in self.files[self.selected_locust]["locust"] if locust.task_set))
+        for locust in self.files[self.selected_locust]["locust"]:
             if not locust.task_set:
                 warnings.warn("Notice: Found Locust class (%s) got no task_set. Skipping..." % locust.__name__)
                 continue
@@ -104,7 +102,7 @@ class LocustRunner(object):
             self.num_clients += spawn_count
 
         logger.info("Hatching and swarming %i clients at the rate %g clients/s..." % (spawn_count, self.hatch_rate))
-        occurence_count = dict([(l.__name__, 0) for l in self.locust_classes])
+        occurence_count = dict([(l.__name__, 0) for l in self.files[self.selected_locust]["locust"]])
 
         def hatch():
             sleep_time = 1.0 / self.hatch_rate
@@ -188,9 +186,6 @@ class LocustRunner(object):
             self.selected_locust = selected
             logger.info("Selected: %s" % selected)
             logger.info("Files: %s" % self.files)
-            docstring, locusts = self.files[self.selected_locust]["locust"]
-            names = set(locusts.keys())
-            self.locust_classes = [locusts[n] for n in names]
 
     def stop(self):
         # if we are currently hatching locusts we need to kill the hatching greenlet first
@@ -209,8 +204,8 @@ class LocustRunner(object):
 
 
 class LocalLocustRunner(LocustRunner):
-    def __init__(self, locust_classes, files, options):
-        super(LocalLocustRunner, self).__init__(locust_classes, files, options)
+    def __init__(self, files, options):
+        super(LocalLocustRunner, self).__init__(files, options)
 
         # register listener thats logs the exception for the local runner
         def on_locust_error(locust_instance, exception, tb):
@@ -226,8 +221,8 @@ class LocalLocustRunner(LocustRunner):
 
 
 class DistributedLocustRunner(LocustRunner):
-    def __init__(self, locust_classes, files, options):
-        super(DistributedLocustRunner, self).__init__(locust_classes, files, options)
+    def __init__(self, files, options):
+        super(DistributedLocustRunner, self).__init__(files, options)
         self.master_host = options.master_host
         self.master_port = options.master_port
         self.master_bind_host = options.master_bind_host
