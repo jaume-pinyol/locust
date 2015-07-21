@@ -8,6 +8,7 @@
      <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head> 
 <body class="{{state}}">
+    <div style="display: none;" id="test_id" data-value="{{ selected }}"></div>
     <nav class="navbar navbar-default">
         <div class="container-fluid">
         <div class="navbar-header">
@@ -23,7 +24,11 @@
             <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                 <ul class="nav navbar-nav">
                     <li class="dropdown">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">{{ files[selected].filename }} <span class="caret"></span></a>
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                            {% if files %}
+                                {{ files[selected].filename }}
+                            {% endif %}
+                            <span class="caret"></span></a>
                             <ul class="dropdown-menu">
                                {% for key, value in files.iteritems() %}
                                      <li><a href="/test/{{ value.filename }}" id="{{ value.id }}">{{ value.filename }}</a></li>
@@ -62,10 +67,10 @@
                         <div class="value"><span id="fail_ratio"></span>%</div>
                     </li>
                     <li class="top_box box_stop box_running" id="box_stop">
-                        <a href="/stop"><img src="/static/img/stop.png" style="border:0;"></a>
+                        <a href="/test/{{ selected }}/stop"><img src="/static/img/stop.png" style="border:0;"></a>
                     </li>
                     <li class="top_box box_stop box_running" id="box_reset">
-                        <a href="/stats/reset">Reset Stats</a>
+                        <a href="/test/{{ selected }}/stats/reset">Reset Stats</a>
                     </li>
 
               </ul>
@@ -83,7 +88,7 @@
                     </div>
                     <div class="padder">
                         <h2>Start new Locust swarm</h2>
-                        <form action="/swarm" method="POST" id="swarm_form">
+                        <form action="/test/{{ selected }}/swarm" method="POST" id="swarm_form">
                             <div class="form-group">
                                 <label for="locust_count">Number of users to simulate</label>
                                 <input class="form-control" type="text" name="locust_count" id="locust_count" class="val" />
@@ -104,7 +109,7 @@
                     </div>
                     <div class="padder">
                         <h2>Change the locust count</h2>
-                        <form action="/swarm" method="POST" id="edit_form">
+                        <form action="/test/{{ selected }}/swarm" method="POST" id="edit_form">
                             <div class="form-group">
                                <label for="locust_count">Number of users to simulate</label>
                                 <input  class="form-control" type="text" name="locust_count" id="new_locust_count" class="val" />
@@ -171,9 +176,9 @@
                         </div>
                         <div style="display:none;">
                             <div style="margin-top:20px;">
-                                <a href="/stats/requests/csv">Download request statistics CSV</a><br>
-                                <a href="/stats/distribution/csv">Download response time distribution CSV</a><br>
-                                <a href="/exceptions/csv">Download exceptions CSV</a>
+                                <a href="/test/{{ selected }}/stats/requests/csv">Download request statistics CSV</a><br>
+                                <a href="/test/{{ selected }}/stats/distribution/csv">Download response time distribution CSV</a><br>
+                                <a href="/test/{{ selected }}/exceptions/csv">Download exceptions CSV</a>
                             </div>
                         </div>
                     </div>

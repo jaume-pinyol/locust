@@ -25,20 +25,6 @@ $("#new_test").click(function(event) {
     $("#locust_count").focus().select();
 });
 
-$(".test").click(function(event){
-    var element = $(this);
-    var id = element.attr('id');
-
-    event.preventDefault();
-    $.post("/select-test/" + id, function(response) {
-            if (response.success) {
-                $('.test-list li').removeClass("test-selected").addClass("test");
-                element.removeClass("test").addClass("test-selected")
-            }
-        }
-    );
-});
-
 $(".edit_test").click(function(event) {
     event.preventDefault();
     $("#edit").show();
@@ -122,8 +108,12 @@ $(".stats_label").click(function(event) {
     $('#errors tbody').jqoteapp(errors_tpl, (report.errors).sort(sortBy(sortAttribute, desc)));
 });
 
+var test_id = function(){
+    return $('#test_id').data("value");
+};
+
 function updateStats() {
-    $.get('/stats/requests', function (data) {
+    $.get('/test/' + test_id() + '/stats/requests', function (data) {
         report = JSON.parse(data);
         $("#total_rps").html(Math.round(report.total_rps*100)/100);
         //$("#fail_ratio").html(Math.round(report.fail_ratio*10000)/100);
@@ -151,7 +141,7 @@ function updateStats() {
 updateStats();
 
 function updateExceptions() {
-    $.get('/exceptions', function (data) {
+    $.get('/test/' + test_id() + '/exceptions', function (data) {
         $('#exceptions tbody').empty();
         $('#exceptions tbody').jqoteapp(exceptions_tpl, data.exceptions);
         setTimeout(updateExceptions, 5000);

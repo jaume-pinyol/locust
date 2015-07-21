@@ -221,16 +221,16 @@ def distribution_stats_csv(runner):
     return response
 
 
-# @app.route('/stats/requests')
-# @memoize(timeout=DEFAULT_CACHE_TIME, dynamic_timeout=True)
-# def request_stats_single():
-#    return request_stats(runners.locust_runner)
-
-
-@app.route('/test/<string:test_id>/stats/requests')
+@app.route('/stats/requests')
 @memoize(timeout=DEFAULT_CACHE_TIME, dynamic_timeout=True)
-def request_test_stats(test_id):
-    return request_stats(get_runner(test_id))
+def request_stats_single():
+    return request_stats(runners.locust_runner)
+
+
+#@app.route('/test/<string:test_id>/stats/requests')
+#@memoize(timeout=DEFAULT_CACHE_TIME, dynamic_timeout=True)
+#def request_test_stats(test_id):
+#    return request_stats(get_runner(test_id))
 
 
 def request_stats(runner):

@@ -60,17 +60,14 @@ class LocustRunner(object):
     def user_count(self):
         return len(self.locusts)
 
-    def get_locust_classes(self):
-        return self.files[self.selected_locust]["locust"].values
-
     def weight_locusts(self, amount, stop_timeout=None):
         """
         Distributes the amount of locusts for each WebLocust-class according to it's weight
         returns a list "bucket" with the weighted locusts
         """
         bucket = []
-        weight_sum = sum((locust.weight for locust in self.files[self.selected_locust]["locust"] if locust.task_set))
-        for locust in self.files[self.selected_locust]["locust"]:
+        weight_sum = sum((locust.weight for locust in self.get_selected_locust() if locust.task_set))
+        for locust in self.get_selected_locust():
             if not locust.task_set:
                 warnings.warn("Notice: Found Locust class (%s) got no task_set. Skipping..." % locust.__name__)
                 continue
@@ -94,6 +91,7 @@ class LocustRunner(object):
             self.stats.max_requests = self.num_requests
 
         bucket = self.weight_locusts(spawn_count, stop_timeout)
+        logger.info("Bucket: %s", bucket)
         spawn_count = len(bucket)
         if self.state == STATE_INIT or self.state == STATE_STOPPED:
             self.state = STATE_HATCHING
@@ -102,7 +100,7 @@ class LocustRunner(object):
             self.num_clients += spawn_count
 
         logger.info("Hatching and swarming %i clients at the rate %g clients/s..." % (spawn_count, self.hatch_rate))
-        occurence_count = dict([(l.__name__, 0) for l in self.files[self.selected_locust]["locust"]])
+        occurence_count = dict([(l.__name__, 0) for l in self.get_selected_locust()])
 
         def hatch():
             sleep_time = 1.0 / self.hatch_rate
@@ -186,6 +184,9 @@ class LocustRunner(object):
             self.selected_locust = selected
             logger.info("Selected: %s" % selected)
             logger.info("Files: %s" % self.files)
+
+    def get_selected_locust(self):
+        return self.files[self.selected_locust]["locust"]
 
     def stop(self):
         # if we are currently hatching locusts we need to kill the hatching greenlet first
