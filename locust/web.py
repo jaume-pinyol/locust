@@ -30,6 +30,7 @@ app.root_path = os.path.dirname(os.path.abspath(__file__))
 
 @app.route('/')
 def index():
+    #TODO redirect to "/test/{}".formt(getRunner().selected_locust)
     is_distributed = isinstance(runners.locust_runner, MasterLocustRunner)
     if is_distributed:
         slave_count = runners.locust_runner.slave_count
@@ -92,6 +93,13 @@ def swarm(runner, request):
     hatch_rate = float(request.form["hatch_rate"])
     runner.start_hatching(locust_count, hatch_rate)
     response = make_response(json.dumps({'success': True, 'message': 'Swarming started'}))
+    response.headers["Content-type"] = "application/json"
+    return response
+
+
+@app.route('/healthcheck')
+def healthcheck():
+    response = make_response(json.dumps({'healthcheck': 'OK'}))
     response.headers["Content-type"] = "application/json"
     return response
 

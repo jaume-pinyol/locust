@@ -1,0 +1,47 @@
+<script type="text/javascript" src="/static/js/jquery-1.11.3.min.js"></script>
+<script type="text/javascript" src="/static/jquery.jqote2.min.js"></script>
+<script type="text/javascript" src="/static/js/jquery-ui.min.js"></script>
+<script type="text/javascript" src="/static/js/Chart.min.js"></script>
+    <script type="text/javascript" src="/static/js/Chart-conf.js"></script>
+
+<script type="text/x-jqote-template" id="stats-template">
+    <![CDATA[
+    <tr class="<%=(this.name == 'Total' ? 'total info' : '')%>">
+        <td><%= (this.method ? this.method : "") %></td>
+        <td><%= this.name %></td>
+        <td class="numeric"><%= this.num_requests %></td>
+        <td class="numeric"><%= this.num_failures %></td>
+        <td class="numeric"><%= Math.round(this.median_response_time) %></td>
+        <td class="numeric"><%= Math.round(this.avg_response_time) %></td>
+        <td class="numeric"><%= this.min_response_time %></td>
+        <td class="numeric"><%= this.max_response_time %></td>
+        <td class="numeric"><%= Math.round(this.avg_content_length) %></td>
+        <td class="numeric"><%= Math.round(this.current_rps*100)/100 %></td>
+    </tr>
+    <% alternate = !alternate; %>
+    ]]>
+</script>
+<script type="text/x-jqote-template" id="errors-template">
+    <![CDATA[
+    <tr class="<%=(alternate ? 'dark' : '')%>">
+        <td><%= this.occurences %></td>
+        <td><%= this.method %></td>
+        <td><%= this.name %></td>
+        <td><%= function(e) { return e.replace("<", "&lt;"); }(this.error) %></td>
+    </tr>
+    <% alternate = !alternate; %>
+    ]]>
+</script>
+<script type="text/x-jqote-template" id="exceptions-template">
+    <![CDATA[
+    <tr class="<%=(alternate ? 'dark' : '')%>">
+        <td class="occurences"><%= this.count %></td>
+        <td class="traceback" title="Occured on: <%= this.nodes %>">
+            <%= function(e) { return e.replace("<", "&lt;"); }(this.traceback) %>
+            <%= function(e) { return e.replace("<", "&lt;"); }(this.msg) %></td>
+    </tr>
+    <% alternate = !alternate; %>
+    ]]>
+</script>
+<script type="text/javascript" src="/static/locust.js"></script>
+<script type="text/javascript" src="/static/js/bootstrap.min.js"></script>
