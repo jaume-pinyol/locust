@@ -188,8 +188,6 @@ class LocustRunner(object):
             self.state = STATE_INIT
             self.stats.reset_all()
             self.selected_locust = selected
-            logger.info("Selected: %s" % selected)
-            logger.info("Files: %s" % self.files)
             return True
         return False
 
@@ -430,7 +428,6 @@ class SlaveLocustRunner(DistributedLocustRunner):
                 self.num_requests = job["num_requests"]
                 self.host = job["host"]
                 self.selected_locust = job["test"]
-                logger.info("running test: %s" % self.selected_locust)
                 self.hatching_greenlet = gevent.spawn(
                     lambda: self.start_hatching(locust_count=job["num_clients"], hatch_rate=job["hatch_rate"]))
             elif msg.type == "stop":

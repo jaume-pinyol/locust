@@ -7,6 +7,7 @@ from time import time
 from itertools import chain
 from collections import defaultdict
 from StringIO import StringIO
+import logging
 
 from gevent import wsgi
 from flask import Flask, make_response, request, render_template
@@ -16,8 +17,6 @@ from locust.cache import memoize
 from locust.runners import MasterLocustRunner
 from locust.stats import median_from_dict
 from locust import version
-import logging
-from locust import runners_collector
 
 logger = logging.getLogger(__name__)
 
@@ -59,8 +58,6 @@ def bootstrap(test_id):
         slave_count = test_runner.slave_count
     else:
         slave_count = 0
-
-    logger.info("test_id:%s test_runner:%s" % (test_id, test_runner))
 
     files = runners.locust_runner.files
 
