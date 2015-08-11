@@ -1,0 +1,342 @@
+{
+	"AWSTemplateFormatVersion" : "2010-09-09",
+
+	"Description": "Create Locust cluster",
+
+	"Parameters": {
+		"InstanceType": {
+			"Default": "t2.micro",
+			"Description": "EC2 instance type to Locust",
+			"Type": "String"
+		},
+		"KeyPairName": {
+			"AllowedPattern": "[-_ a-zA-Z0-9]*",
+			"ConstraintDescription": "can contain only alphanumeric characters, spaces, dashes and underscores.",
+			"Default": "devops",
+			"Description": "Name of an existing EC2 KeyPair to enable SSH access to the instance",
+			"MaxLength": 64,
+			"MinLength": 1,
+			"Type": "String"
+		},
+    "AMI": {
+      "Description": "AMI id",
+      "Type": "String",
+      "Default": "ami-7ab7e10d"
+    },
+		"s3Bucket": {
+      "Description": "tests bucket",
+      "Type": "String",
+      "Default": "locust-tests"
+    },
+    "VPC" : {
+      "Type" : "String",
+      "Default": "vpc-493d802c",
+      "Description" : "The VPC ID"
+    },
+		"Subnet1": {
+			"Description": "The subnet IDs in your virtual private cloud.",
+			"Type": "String",
+			"Default": "subnet-acb524db"
+		},
+		"Subnet2": {
+			"Description": "The subnet IDs in your virtual private cloud.",
+			"Type": "String",
+			"Default": "subnet-29379c70"
+		},
+		"Subnet3": {
+			"Description": "The subnet IDs in your virtual private cloud.",
+			"Type": "String",
+			"Default": "subnet-fc80e999"
+		},
+		"Subnet1AZ": {
+			"Description": "The subnet IDs in your virtual private cloud.",
+			"Type": "String",
+			"Default": "eu-west-1a"
+		},
+		"Subnet2AZ": {
+			"Description": "The subnet IDs in your virtual private cloud.",
+			"Type": "String",
+			"Default": "eu-west-1b"
+		},
+		"Subnet3AZ": {
+			"Description": "The subnet IDs in your virtual private cloud.",
+			"Type": "String",
+			"Default": "eu-west-1c"
+		},
+		"MaxSlaves": {
+			"Description": "The subnet IDs in your virtual private cloud.",
+			"Type": "Number",
+			"Default": 5
+		},
+		"MinSlaves": {
+			"Description": "The subnet IDs in your virtual private cloud.",
+			"Type": "Number",
+			"Default": 1
+		},
+		"HostedZone": {
+			"Description": "The subnet IDs in your virtual private cloud.",
+			"Type": "String",
+			"Default" : "ms-dev.schibsted.io"
+		},
+		"LocustMasterSubDomain": {
+			"Description": "Subdomain for the Master Locust",
+			"Type": "String",
+			"Default" : "locust-master",
+			"AllowedPattern" : "[a-z0-9-\\.]*"
+		}
+	},
+
+	"Resources": {
+		"LocustSecurityGroup": {
+			"Type": "AWS::EC2::SecurityGroup",
+			"Properties": {
+				"GroupDescription": "Allow tcp port 8089 to SG LocustMaster. Full access for Schibsted.",
+				"VpcId" : { "Ref" : "VPC" },
+				"SecurityGroupIngress": [
+					{
+						"IpProtocol" : "tcp",
+						"FromPort" : "0",
+						"ToPort" : "65535",
+						"CidrIp" : "195.235.96.234/32"
+					}
+				]
+			}
+		},
+		"LocustSecurityGroupEc2Ingress01": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "LocustSecurityGroup"
+        },
+        "IpProtocol": "tcp",
+        "FromPort": "0",
+        "ToPort": "65535",
+        "SourceSecurityGroupId": { "Ref" : "LocustSecurityGroup" }
+      }
+    },
+		"LocustSecurityGroupEc2Ingress02": {
+			"Type": "AWS::EC2::SecurityGroupIngress",
+			"Properties": {
+				"GroupId": {
+					"Ref": "LocustSecurityGroup"
+				},
+				"IpProtocol": "udp",
+				"FromPort": "0",
+				"ToPort": "65535",
+				"SourceSecurityGroupId": { "Ref" : "LocustSecurityGroup" }
+			}
+		},
+		"LocustMasterLoadBalancerSecurityGroup" : {
+			"Type" : "AWS::EC2::SecurityGroup",
+			"Properties" : {
+				"GroupDescription" : "Allow TCP port 80 for Schibsted.",
+				"SecurityGroupIngress" : [
+					{
+						"IpProtocol" : "tcp",
+						"FromPort" : "80",
+						"ToPort" : "80",
+						"CidrIp" : "195.235.96.234/32"
+					}
+				],
+				"VpcId" : { "Ref" : "VPC" }
+			}
+		},
+		"LocustMasterElasticLoadBalancer" : {
+			"Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
+			"Properties" : {
+				"CrossZone": true,
+				"Listeners" : [
+					{
+						"LoadBalancerPort" : "80",
+						"InstancePort" : "8089",
+						"Protocol" : "TCP"
+					}
+				],
+				"HealthCheck" : {
+					"Target" : { "Fn::Join" : [ "", ["HTTP:", "8089", "/healthcheck"]]},
+					"HealthyThreshold" : "10",
+					"UnhealthyThreshold" : "10",
+					"Interval" : "30",
+					"Timeout" : "5"
+				},
+				"Scheme" : "internet-facing",
+				"SecurityGroups" : [ { "Ref" : "LocustMasterLoadBalancerSecurityGroup" } ],
+				"Subnets" : [
+					{ "Ref" : "Subnet1" },
+					{ "Ref" : "Subnet2" },
+					{ "Ref" : "Subnet3" }
+				]
+			}
+		},
+		"LocustMasterCNAMERecord" : {
+			"Type" : "AWS::Route53::RecordSet",
+			"Properties" : {
+				"HostedZoneName" : { "Fn::Join": [ "", ["", { "Ref" : "HostedZone"}, "."]]},
+				"Comment" : "DNS entry for  Locust Master",
+				"Name" : { "Fn::Join": [ "", ["", { "Ref" : "LocustMasterSubDomain"}, "." , { "Ref" : "HostedZone" }, "." ]] },
+				"Type" : "CNAME",
+				"TTL" : "300",
+				"Weight" : 0,
+				"SetIdentifier": { "Ref": "AWS::StackName" },
+				"ResourceRecords" : [{"Fn::GetAtt" : [ "LocustMasterElasticLoadBalancer" , "DNSName" ]}]
+			}
+		},
+		"LocustMasterLaunchConfig": {
+			"Type": "AWS::AutoScaling::LaunchConfiguration",
+			"Properties": {
+				"AssociatePublicIpAddress" : "true",
+				"IamInstanceProfile": {	"Ref": "LocustInstanceProfile" },
+				"ImageId": {"Ref": "AMI"},
+				"InstanceType": { "Ref": "InstanceType"	},
+				"KeyName": { "Ref": "KeyPairName" },
+				"SecurityGroups": [ { "Ref": "LocustSecurityGroup" }]
+			}
+		},
+		"LocustSlaveLaunchConfig": {
+			"Type": "AWS::AutoScaling::LaunchConfiguration",
+			"Properties": {
+				"AssociatePublicIpAddress" : "true",
+				"IamInstanceProfile": {	"Ref": "LocustInstanceProfile" },
+				"ImageId": {"Ref": "AMI"},
+				"InstanceType": { "Ref": "InstanceType"	},
+				"KeyName": { "Ref": "KeyPairName" },
+				"SecurityGroups": [ { "Ref": "LocustSecurityGroup" }]
+			}
+		},
+		"LocustInstanceProfile": {
+			"Type": "AWS::IAM::InstanceProfile",
+			"Properties": {
+				"Path": "/",
+				"Roles": [
+					{
+						"Ref": "LocustRole"
+					}
+				]
+			}
+		},
+
+		"LocustRole": {
+			"Type": "AWS::IAM::Role",
+			"Properties": {
+				"AssumeRolePolicyDocument": {
+					"Statement": [
+						{
+							"Action": [
+								"sts:AssumeRole"
+							],
+							"Effect": "Allow",
+							"Principal": {
+								"Service": [
+									"ec2.amazonaws.com"
+								]
+							}
+						}
+					]
+				},
+				"Path": "/",
+				"Policies": [
+					{
+						"PolicyDocument": {
+							"Statement": [
+								{
+									"Effect": "Allow",
+									"Action": [
+										"ec2:DescribeTags",
+										"ec2:DescribeInstances",
+										"autoscaling:DescribeAutoScalingGroups"
+									],
+									"Resource": ["*"]
+								},
+							 {
+						      "Action": "s3:*",
+						      "Effect": "Allow",
+						      "Resource": [
+										{ "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "s3Bucket"}, ""]]},
+										{ "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "s3Bucket"}, "/*"]]}
+						      ]
+						    },
+								{
+								 "Effect": "Allow",
+								 "Action": [
+										 "dynamodb:GetItem",
+										 "dynamodb:BatchGetItem",
+										 "dynamodb:Query"
+								 ],
+								 "Resource": ["arn:aws:dynamodb:eu-west-1:686688311312:table/locust-test-configuration"],
+								 "Condition": {
+										 "ForAllValues:StringEquals": {"dynamodb:LeadingKeys": ["${www.amazon.com:user_id}"]}
+								 }
+							 }
+							]
+						},
+						"PolicyName": "LocustPolicy"
+					}
+				]
+			}
+		},
+		"LocustMasterASG": {
+			"Type": "AWS::AutoScaling::AutoScalingGroup",
+			"Properties": {
+				"Cooldown": 120,
+				"LoadBalancerNames" : [ { "Ref" : "LocustMasterElasticLoadBalancer" } ],
+				"LaunchConfigurationName": { "Ref": "LocustMasterLaunchConfig" },
+				"MaxSize": 1,
+				"MinSize": 1,
+				"AvailabilityZones" : [
+					{ "Ref" : "Subnet1AZ"},
+					{ "Ref" : "Subnet2AZ"},
+					{ "Ref" : "Subnet3AZ"}
+				],
+				"VPCZoneIdentifier" : [{ "Ref" : "Subnet1" }, { "Ref" : "Subnet2" },{ "Ref" : "Subnet3" }],
+				"Tags": [
+					{
+						"Key": "Name",
+						"PropagateAtLaunch": "true",
+						"Value": "locust-master"
+					},
+					{
+						"Key": "Locust",
+						"PropagateAtLaunch": "true",
+						"Value": "master"
+					}
+
+				]
+			}
+		},
+		"LocustSlavesASG": {
+			"Type": "AWS::AutoScaling::AutoScalingGroup",
+			"Properties": {
+				"Cooldown": 120,
+				"LaunchConfigurationName": { "Ref": "LocustSlaveLaunchConfig" },
+				"MaxSize": { "Ref" : "MaxSlaves"},
+				"MinSize": { "Ref" : "MinSlaves"},
+				"AvailabilityZones" : [{ "Ref" : "Subnet1AZ"}, { "Ref" : "Subnet2AZ"}, { "Ref" : "Subnet3AZ"}],
+				"VPCZoneIdentifier" : [{ "Ref" : "Subnet1" }, { "Ref" : "Subnet2" },{ "Ref" : "Subnet3" }],
+				"Tags": [
+					{
+						"Key": "Name",
+						"PropagateAtLaunch": "true",
+						"Value": "locust-slave"
+					},
+					{
+						"Key": "Locust",
+						"PropagateAtLaunch": "true",
+						"Value": "slave"
+					},
+					{
+						"Key": "master-asg",
+						"PropagateAtLaunch": "true",
+						"Value": { "Ref": "LocustMasterASG" }
+					}
+				]
+			}
+		}
+	},
+
+	"Outputs": {
+		"LocustMasterURL": {
+			"Description": "Locust URL",
+			"Value": { "Fn::Join": [ "", [ "", { "Ref" : "LocustMasterSubDomain"}, ".", { "Ref" : "HostedZone" }]]}
+		}
+	}
+}
