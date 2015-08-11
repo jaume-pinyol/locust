@@ -1,0 +1,56 @@
+{
+	"variables": {
+		"aws_access_key": "",
+		"aws_secret_key": "",
+		"ec2_region": "eu-west-1",
+		"ec2_instance_type": "t2.micro",
+		"ec2_source_ami": "ami-a10897d6",
+		"ec2_ssh_username": "ec2-user",
+		"ec2_ssh_timeout": "7m",
+		"basename": "locust",
+		"creation_time": "20150612",
+		"appversion": "0.4.8",
+		"creator": "jaume.pinyol@schibsted.com"
+	},
+	"builders": [
+		{
+			"type": "amazon-ebs",
+			"access_key": "{{user `aws_access_key`}}",
+			"secret_key": "{{user `aws_secret_key`}}",
+			"region": "{{user `ec2_region`}}",
+			"source_ami": "{{user `ec2_source_ami`}}",
+			"instance_type": "{{user `ec2_instance_type`}}",
+			"ssh_username": "{{user `ec2_ssh_username`}}",
+			"ssh_timeout": "{{user `ec2_ssh_timeout`}}",
+			"ami_name": "{{user `basename`}}-{{user `appversion`}}",
+			"ami_users" : ["139129115512","493317079362"],
+			"name": "{{user `basename`}}-{{user `appversion`}}",
+			"ami_virtualization_type": "hvm",
+			"enhanced_networking": "true",
+			"tags": {
+				"Name": "{{user `basename`}}-{{ isotime \"20060102150405\"}} (builder)",
+				"appversion": "{{user `appversion`}}",
+				"base_ami_version": "{{user `ec2_source_ami`}}",
+				"creation_time":  "{{user `creation_time`}}",
+				"creator": "{{user `creator`}}"
+			}
+		}
+	],
+	"provisioners": [
+		{
+			"type": "file",
+			"source": "files/locust",
+			"destination": "/tmp/locust"
+		},
+		{
+				"inline":[
+					"sudo cp -R /tmp/locust/* /; sudo rm -rf /tmp/locust"
+				],
+				"type":"shell"
+		},
+		{
+			"type": "shell",
+			"script": "locust.sh"
+		}
+	]
+}
