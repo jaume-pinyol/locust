@@ -10,11 +10,14 @@ from StringIO import StringIO
 import logging
 
 from gevent import wsgi
+
 from flask import Flask, make_response, request, render_template
+import sys
+from folders import find_all_test_in_folder, parse_options
 
 from locust import runners
 from locust.cache import memoize
-from locust.runners import MasterLocustRunner
+from locust.runners import MasterLocustRunner, LocalLocustRunner
 from locust.stats import median_from_dict
 from locust import version
 
@@ -25,11 +28,12 @@ DEFAULT_CACHE_TIME = 2.0
 app = Flask(__name__)
 app.debug = True
 app.root_path = os.path.dirname(os.path.abspath(__file__))
+valid_chart_types = ["bar", "line"]
 
 
 @app.route('/')
 def index():
-    #TODO redirect to "/test/{}".formt(getRunner().selected_locust)
+    # TODO redirect to "/test/{}".formt(getRunner().selected_locust)
     is_distributed = isinstance(runners.locust_runner, MasterLocustRunner)
     if is_distributed:
         slave_count = runners.locust_runner.slave_count
@@ -46,9 +50,51 @@ def index():
                            )
 
 
+@app.route("/reload-tests")
+def reload_tests():
+    parser, options, arguments = parse_options()
+    tests_in_locust_folder = find_all_test_in_folder('/Users/jaumepinyol/Documents/locust/locust/tests')
+    for test_in_folder in tests_in_locust_folder:
+        docstring, locusts = tests_in_locust_folder[test_in_folder]["locust"]
+        if arguments:
+            missing = set(arguments) - set(locusts.keys())
+            if missing:
+                logger.error("Unknown Locust(s): %s\n" % (", ".join(missing)))
+                sys.exit(1)
+            else:
+                names = set(arguments) & set(locusts.keys())
+                tests_in_locust_folder[test_in_folder]["locust"] = [locusts[n] for n in names]
+        else:
+            tests_in_locust_folder[test_in_folder]["locust"] = locusts.values()
+
+    selected_test = runners.locust_runner.reload_tests(tests_in_locust_folder)
+    response = make_response(json.dumps({'success': True, 'selected_test': selected_test, 'message': 'reloaded'}))
+
+    response.headers["Content-type"] = "application/json"
+    return response
+
+
 @app.route('/test/<string:test_id>')
 def bootstrap(test_id):
     test_runner = get_runner(test_id)
+    if test_runner is None:
+        parser, options, arguments = parse_options()
+        tests_in_locust_folder = find_all_test_in_folder('/Users/jaumepinyol/Documents/locust/locust/tests')
+        for test_in_folder in tests_in_locust_folder:
+            docstring, locusts = tests_in_locust_folder[test_in_folder]["locust"]
+            if arguments:
+                missing = set(arguments) - set(locusts.keys())
+                if missing:
+                    logger.error("Unknown Locust(s): %s\n" % (", ".join(missing)))
+                    sys.exit(1)
+                else:
+                    names = set(arguments) & set(locusts.keys())
+                    tests_in_locust_folder[test_in_folder]["locust"] = [locusts[n] for n in names]
+            else:
+                tests_in_locust_folder[test_in_folder]["locust"] = locusts.values()
+        runners.locust_runner = LocalLocustRunner(tests_in_locust_folder, options)
+        test_runner = get_runner(test_id)
+
     changed = False
     if test_runner.selected_locust != test_id:
         changed = test_runner.set_selected_locust(test_id)
@@ -222,9 +268,41 @@ def distribution_stats_csv(runner):
 
 
 @app.route('/stats/requests')
-#@memoize(timeout=DEFAULT_CACHE_TIME, dynamic_timeout=True)
+# @memoize(timeout=DEFAULT_CACHE_TIME, dynamic_timeout=True)
 def request_stats_single():
     return request_stats(runners.locust_runner)
+
+
+def generate_chart(chart_type, chart_title, chart_series):
+    return {
+        "type": chart_type,
+        "title": {
+            "text": chart_title
+        },
+        "series": chart_series
+    }
+
+
+@app.route("/test/<string:test_id>/request/stats/chart/<string:chart_type>/json")
+def chart(test_id, chart_type):
+    if chart_type in valid_chart_types:
+        stats = get_stats(runners.locust_runner)
+        series = []
+        for stat in stats:
+            logger.info(stat)
+            values = {"values": [stat['avg_response_time'], stat['max_response_time'], stat['min_response_time'],
+                                 stat['median_response_time']]}
+            series.append(values)
+
+        chart_type = "line"
+        chart_title = "Latency chart"
+
+        response = make_response(json.dumps(generate_chart(chart_type, chart_title, series)))
+    else:
+        response = make_response(json.dumps({"error": "invalid chart type"}))
+
+    response.headers["Content-type"] = "application/json"
+    return response
 
 
 @app.route('/test/<string:test_id>/stats/requests')
@@ -233,10 +311,9 @@ def request_test_stats(test_id):
     return request_stats(get_runner(test_id))
 
 
-def request_stats(runner):
+def get_stats(runner):
     stats = []
-    for s in chain(_sort_stats(runner.request_stats),
-                   [runner.stats.aggregated_stats("Total")]):
+    for s in chain(_sort_stats(runner.request_stats), [runner.stats.aggregated_stats("Total")]):
         stats.append({
             "method": s.method,
             "name": s.name,
@@ -249,7 +326,11 @@ def request_stats(runner):
             "median_response_time": s.median_response_time,
             "avg_content_length": s.avg_content_length,
         })
+    return stats
 
+
+def generate_report(runner):
+    stats = get_stats(runner)
     report = {"stats": stats, "errors": [e.to_dict() for e in runner.errors.itervalues()]}
     if stats:
         report["total_rps"] = stats[len(stats) - 1]["current_rps"]
@@ -273,7 +354,11 @@ def request_stats(runner):
 
     report["state"] = runner.state
     report["user_count"] = runner.user_count
-    return json.dumps(report)
+    return report
+
+
+def request_stats(runner):
+    return json.dumps(generate_report(runner))
 
 
 @app.route("/exceptions")
@@ -287,9 +372,18 @@ def exceptions_test(test_id):
 
 
 def exceptions(runner):
-    response = make_response(json.dumps({'exceptions': [
-        {"count": row["count"], "msg": row["msg"], "traceback": row["traceback"], "nodes": ", ".join(row["nodes"])} for
-        row in runner.exceptions.itervalues()]}))
+    response = make_response(json.dumps(
+        {
+            'exceptions': [
+                {
+                    "count": row["count"],
+                    "msg": row["msg"],
+                    "traceback": row["traceback"],
+                    "nodes": ", ".join(row["nodes"])
+                } for row in runner.exceptions.itervalues()]
+        }
+    ))
+
     response.headers["Content-type"] = "application/json"
     return response
 
@@ -302,6 +396,12 @@ def exceptions_csv_single():
 @app.route("/test/<string:test_id>/exceptions/csv")
 def exceptions_test_csv(test_id):
     return exceptions_csv(get_runner(test_id))
+
+
+@app.route("/docs", methods=["POST"])
+def docs():
+    response = make_response("error")
+    return response
 
 
 def exceptions_csv(runner):
@@ -331,9 +431,10 @@ def _sort_stats(stats):
 
 def get_runner(test_id):
     return runners.locust_runner
-  #  return runners.locust_runner.runner_collector.runners[test_id]['runner']
+    #  return runners.locust_runner.runner_collector.runners[test_id]['runner']
 
 
 def get_runners():
     return runners.locust_runner
-    #return runners.locust_runner.runner_collector.runners
+    # return runners.locust_runner.runner_collector.runners
+

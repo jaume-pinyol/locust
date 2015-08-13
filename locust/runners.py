@@ -60,6 +60,13 @@ class LocustRunner(object):
     def user_count(self):
         return len(self.locusts)
 
+    def reload_tests(self, tests, ):
+        self.files = tests
+        if self.selected_locust not in self.files:
+            self.selected_locust = tests.keys()[0]
+        #tell slaves to reload
+        return self.selected_locust
+
     def weight_locusts(self, amount, stop_timeout=None):
         """
         Distributes the amount of locusts for each WebLocust-class according to it's weight
@@ -67,6 +74,7 @@ class LocustRunner(object):
         """
         bucket = []
         weight_sum = sum((locust.weight for locust in self.get_selected_locust() if locust.task_set))
+
         for locust in self.get_selected_locust():
             if not locust.task_set:
                 warnings.warn("Notice: Found Locust class (%s) got no task_set. Skipping..." % locust.__name__)

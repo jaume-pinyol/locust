@@ -62,6 +62,7 @@ var radarChart = null;
 var polarAreaChart = null;
 var updateBarChartInterval = null;
 var updatePolarAreaChartInteval = null;
+var zing = null;
 
 $('#swarm_form').submit(function(event) {
     event.preventDefault();
@@ -102,6 +103,22 @@ $('#swarm_form').submit(function(event) {
                         }
                     });
                 });
+                var chartData={
+                    "type": "bar",
+                    "series": [
+                        { "values": [35, 42, 67, 89] },
+                        { "values": [28, 57, 43, 56] }
+                    ]
+                };
+
+                zing = zingchart.render({
+                    id:'chartDiv',
+                    height:400,
+                    width:600,
+                    dataurl: '/test/' + test_id() + '/request/stats/chart/line/json'
+                });
+
+
 
                 //updatePolarAreaChartInteval = setInterval(updateChart(polarAreaChart), 10000)
                 //updateBarChartInterval = setInterval(updateChart(barChart), 10000)
@@ -122,6 +139,19 @@ $('#edit_form').submit(function(event) {
         }
     );
 });
+$( document ).ready(function(){
+    $('#refresh').click(function(event) {
+        event.preventDefault();
+        $.get('/reload-tests',
+            function(response) {
+                if (response.success) {
+                    location.reload();
+                }
+            }
+        );
+    });
+});
+
 
 var sortBy = function(field, reverse, primer){
     reverse = (reverse) ? -1 : 1;

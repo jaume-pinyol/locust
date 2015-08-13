@@ -1,4 +1,5 @@
 import inspect
+from optparse import OptionParser
 import os
 import sys
 import uuid
@@ -121,3 +122,231 @@ def find_all_test_in_folder(locust_directory):
                 tests[filename] = locust  # Add it to the list.
 
     return tests  # Self-explanatory.
+
+
+def find_all_test_in_folder_enhanced(locust_directory):
+    tests = find_all_test_in_folder(locust_directory)
+    for test_in_folder in tests:
+        docstring, locusts = tests[test_in_folder]["locust"]
+        tests[test_in_folder]["locust"] = locusts.values()
+
+
+
+def parse_options():
+    """
+    Handle command-line options with optparse.OptionParser.
+
+    Return list of arguments, largely for use in `parse_arguments`.
+    """
+
+    # Initialize
+    parser = OptionParser(usage="locust [options] [LocustClass [LocustClass2 ... ]]")
+
+    parser.add_option(
+        '-H', '--host',
+        dest="host",
+        default=None,
+        help="Host to load test in the following format: http://10.21.32.33"
+    )
+
+    parser.add_option(
+        '--web-host',
+        dest="web_host",
+        default="",
+        help="Host to bind the web interface to. Defaults to '' (all interfaces)"
+    )
+
+    parser.add_option(
+        '-P', '--port', '--web-port',
+        type="int",
+        dest="port",
+        default=8089,
+        help="Port on which to run web host"
+    )
+
+    parser.add_option(
+        '-f', '--locustfile',
+        dest='locustfile',
+        default='locustfile',
+        help="Python module file to import, e.g. '../other.py'. Default: locustfile"
+    )
+
+    parser.add_option(
+        '-t', '--test-folder',
+        dest='testfolder',
+        default='locust-test',
+        help="test folder to import, e.g. '../locust-test'. Default: locust-test"
+    )
+
+    # if locust should be run in distributed mode as master
+    parser.add_option(
+        '--master',
+        action='store_true',
+        dest='master',
+        default=False,
+        help="Set locust to run in distributed mode with this process as master"
+    )
+
+    # if locust should be run in distributed mode as slave
+    parser.add_option(
+        '--slave',
+        action='store_true',
+        dest='slave',
+        default=False,
+        help="Set locust to run in distributed mode with this process as slave"
+    )
+
+    # master host options
+    parser.add_option(
+        '--master-host',
+        action='store',
+        type='str',
+        dest='master_host',
+        default="127.0.0.1",
+        help="Host or IP address of locust master for distributed load testing. Only used when running with --slave. Defaults to 127.0.0.1."
+    )
+
+    parser.add_option(
+        '--master-port',
+        action='store',
+        type='int',
+        dest='master_port',
+        default=5557,
+        help="The port to connect to that is used by the locust master for distributed load testing. Only used when running with --slave. Defaults to 5557. Note that slaves will also connect to the master node on this port + 1."
+    )
+
+    parser.add_option(
+        '--master-bind-host',
+        action='store',
+        type='str',
+        dest='master_bind_host',
+        default="*",
+        help="Interfaces (hostname, ip) that locust master should bind to. Only used when running with --master. Defaults to * (all available interfaces)."
+    )
+
+    parser.add_option(
+        '--master-bind-port',
+        action='store',
+        type='int',
+        dest='master_bind_port',
+        default=5557,
+        help="Port that locust master should bind to. Only used when running with --master. Defaults to 5557. Note that Locust will also use this port + 1, so by default the master node will bind to 5557 and 5558."
+    )
+
+    # if we should print stats in the console
+    parser.add_option(
+        '--no-web',
+        action='store_true',
+        dest='no_web',
+        default=False,
+        help="Disable the web interface, and instead start running the test immediately. Requires -c and -r to be specified."
+    )
+
+    # Number of clients
+    parser.add_option(
+        '-c', '--clients',
+        action='store',
+        type='int',
+        dest='num_clients',
+        default=1,
+        help="Number of concurrent clients. Only used together with --no-web"
+    )
+
+    # Client hatch rate
+    parser.add_option(
+        '-r', '--hatch-rate',
+        action='store',
+        type='float',
+        dest='hatch_rate',
+        default=1,
+        help="The rate per second in which clients are spawned. Only used together with --no-web"
+    )
+
+    # Number of requests
+    parser.add_option(
+        '-n', '--num-request',
+        action='store',
+        type='int',
+        dest='num_requests',
+        default=None,
+        help="Number of requests to perform. Only used together with --no-web"
+    )
+
+    # log level
+    parser.add_option(
+        '--loglevel', '-L',
+        action='store',
+        type='str',
+        dest='loglevel',
+        default='INFO',
+        help="Choose between DEBUG/INFO/WARNING/ERROR/CRITICAL. Default is INFO.",
+    )
+
+    # log file
+    parser.add_option(
+        '--logfile',
+        action='store',
+        type='str',
+        dest='logfile',
+        default=None,
+        help="Path to log file. If not set, log will go to stdout/stderr",
+    )
+
+    # if we should print stats in the console
+    parser.add_option(
+        '--print-stats',
+        action='store_true',
+        dest='print_stats',
+        default=False,
+        help="Print stats in the console"
+    )
+
+    # only print summary stats
+    parser.add_option(
+        '--only-summary',
+        action='store_true',
+        dest='only_summary',
+        default=False,
+        help='Only print the summary stats'
+    )
+
+    # List locust commands found in loaded locust files/source files
+    parser.add_option(
+        '-l', '--list',
+        action='store_true',
+        dest='list_commands',
+        default=False,
+        help="Show list of possible locust classes and exit"
+    )
+
+    # Display ratio table of all tasks
+    parser.add_option(
+        '--show-task-ratio',
+        action='store_true',
+        dest='show_task_ratio',
+        default=False,
+        help="print table of the locust classes' task execution ratio"
+    )
+    # Display ratio table of all tasks in JSON format
+    parser.add_option(
+        '--show-task-ratio-json',
+        action='store_true',
+        dest='show_task_ratio_json',
+        default=False,
+        help="print json data of the locust classes' task execution ratio"
+    )
+
+    # Version number (optparse gives you --version but we have to do it
+    # ourselves to get -V too. sigh)
+    parser.add_option(
+        '-V', '--version',
+        action='store_true',
+        dest='show_version',
+        default=False,
+        help="show program's version number and exit"
+    )
+
+    # Finalize
+    # Return three-tuple of parser + the output from parse_args (opt obj, args)
+    opts, args = parser.parse_args()
+    return parser, opts, args

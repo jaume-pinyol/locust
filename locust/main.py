@@ -277,7 +277,6 @@ def main():
 
     main_test = None
     for test_in_folder in tests_in_locust_folder:
-        logger.info("test: %s" %(test_in_folder))
         docstring, locusts = tests_in_locust_folder[test_in_folder]["locust"]
         if arguments:
             missing = set(arguments) - set(locusts.keys())
