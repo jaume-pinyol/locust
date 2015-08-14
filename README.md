@@ -5,8 +5,9 @@
 
 
 ## Run
+```shell
 locust -t <path/to/test/folder> 
-
+```
 ## Links
 
 * Website: <a href="http://locust.io">locust.io</a>
