@@ -52,22 +52,7 @@ def index():
 
 @app.route("/reload-tests")
 def reload_tests():
-    parser, options, arguments = parse_options()
-    tests_in_locust_folder = find_all_test_in_folder('/Users/jaumepinyol/Documents/locust/locust/tests')
-    for test_in_folder in tests_in_locust_folder:
-        docstring, locusts = tests_in_locust_folder[test_in_folder]["locust"]
-        if arguments:
-            missing = set(arguments) - set(locusts.keys())
-            if missing:
-                logger.error("Unknown Locust(s): %s\n" % (", ".join(missing)))
-                sys.exit(1)
-            else:
-                names = set(arguments) & set(locusts.keys())
-                tests_in_locust_folder[test_in_folder]["locust"] = [locusts[n] for n in names]
-        else:
-            tests_in_locust_folder[test_in_folder]["locust"] = locusts.values()
-
-    selected_test = runners.locust_runner.reload_tests(tests_in_locust_folder)
+    selected_test = runners.locust_runner.reload_tests()
     response = make_response(json.dumps({'success': True, 'selected_test': selected_test, 'message': 'reloaded'}))
 
     response.headers["Content-type"] = "application/json"

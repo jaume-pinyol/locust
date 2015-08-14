@@ -12,6 +12,7 @@ from gevent import GreenletExit
 from gevent.pool import Group
 
 import events
+from folders import find_all_test_in_folder, parse_options
 from stats import global_stats
 
 from rpc import rpc, Message
@@ -60,11 +61,26 @@ class LocustRunner(object):
     def user_count(self):
         return len(self.locusts)
 
-    def reload_tests(self, tests, ):
-        self.files = tests
+    def reload_tests(self):
+        parser, options, arguments = parse_options()
+        tests_in_locust_folder = find_all_test_in_folder(self.test_folder)
+        for test_in_folder in tests_in_locust_folder:
+            docstring, locusts = tests_in_locust_folder[test_in_folder]["locust"]
+            if arguments:
+                missing = set(arguments) - set(locusts.keys())
+                if missing:
+                    logger.error("Unknown Locust(s): %s\n" % (", ".join(missing)))
+                else:
+                    names = set(arguments) & set(locusts.keys())
+                    tests_in_locust_folder[test_in_folder]["locust"] = [locusts[n] for n in names]
+            else:
+                tests_in_locust_folder[test_in_folder]["locust"] = locusts.values()
+
+        self.files = tests_in_locust_folder
         if self.selected_locust not in self.files:
-            self.selected_locust = tests.keys()[0]
-        #tell slaves to reload
+            self.selected_locust = tests_in_locust_folder.keys()[0]
+        data = {"refresh": True}
+        self.server.send(Message("refresh", data, None))
         return self.selected_locust
 
     def weight_locusts(self, amount, stop_timeout=None):
@@ -380,6 +396,8 @@ class MasterLocustRunner(DistributedLocustRunner):
                     del self.clients[msg.node_id]
                     logger.info(
                         "Client %r quit. Currently %i clients connected." % (msg.node_id, len(self.clients.ready)))
+            elif msg.type == "refresh":
+                self.reload_tests()
             elif msg.type == "exception":
                 self.log_exception(msg.node_id, msg.data["msg"], msg.data["traceback"])
 
@@ -442,6 +460,8 @@ class SlaveLocustRunner(DistributedLocustRunner):
                 self.stop()
                 self.client.send(Message("client_stopped", None, self.client_id))
                 self.client.send(Message("client_ready", None, self.client_id))
+            elif msg.type == "refresh":
+                self.reload_tests()
             elif msg.type == "quit":
                 logger.info("Got quit message from master, shutting down...")
                 self.stop()

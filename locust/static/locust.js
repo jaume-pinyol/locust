@@ -5,47 +5,7 @@ $(window).ready(function() {
     }
 });
 
-$("#stop_test").click(function(event){
-    event.preventDefault();
-    $.get($(this).data("action"));
-    $("body").attr("class", "stopped");
-    $(".box_stop").hide();
-    $("a.new_test").show();
-    $("a.edit_test").hide();
-    $(".user_count").hide();
-});
 
-$("#box_stop").find("a").click(function(event) {
-    event.preventDefault();
-    $.get($(this).attr("href"));
-    $("body").attr("class", "stopped");
-    $(".box_stop").hide();
-    $("a.new_test").show();
-    $("a.edit_test").hide();
-    $(".user_count").hide();
-});
-
-$("#box_reset").find("a").click(function(event) {
-    event.preventDefault();
-    $.get($(this).attr("href"));
-});
-
-$("#new_test").click(function(event) {
-    event.preventDefault();
-    $("#start").show();
-    $("#locust_count").focus().select();
-});
-
-$(".edit_test").click(function(event) {
-    event.preventDefault();
-    $("#edit").show();
-    $("#new_locust_count").focus().select();
-});
-
-$(".close_link").click(function(event) {
-    event.preventDefault();
-    $(this).parent().parent().hide();
-});
 
 var alternate = false;
 
@@ -63,83 +23,119 @@ var polarAreaChart = null;
 var updateBarChartInterval = null;
 var updatePolarAreaChartInteval = null;
 var zing = null;
-
-$('#swarm_form').submit(function(event) {
-    event.preventDefault();
-    $.post($(this).attr("action"), $(this).serialize(),
-        function(response) {
-            if (response.success) {
-                $("body").attr("class", "hatching");
-                $("#start").fadeOut();
-                $("#status").fadeIn();
-                $(".box_running").fadeIn();
-                $("a.new_test").fadeOut();
-                $("li.edit_test").fadeIn();
-                $(".user_count").fadeIn();
-                $(".wrapper").fadeIn();
-                //polarAreaChart = createPolarArea("polarArea", polarData);
-                barChart = createChart("bar", "bar", barChartData);
-                radarChart = createChart("radar", "radar", radarChartData);
-                latencyBarChart = createChart("bar", "latencyBar", latencyBarChartData);
-
-                $("#bar").on("update", function(event, data){
-                    barChart.datasets[0].bars[0].value = data.success_request;
-                    barChart.datasets[0].bars[1].value = data.failures;
-                    barChart.update();
-                });
-
-                $("#radar").on("update", function(event, data){
-                    $.each(data.stats, function(key, report_value){
-                        if(report_value.name !== "Total"){
-                            updateRadarChart(report_value);
-                        }
-                    });
-                });
-
-                $("#latencyBar").on("update", function(event, data){
-                    $.each(data.stats, function(key, report_value){
-                        if(report_value.name !== "Total"){
-                            updateLatencyBarChart(report_value)
-                        }
-                    });
-                });
-                var chartData={
-                    "type": "bar",
-                    "series": [
-                        { "values": [35, 42, 67, 89] },
-                        { "values": [28, 57, 43, 56] }
-                    ]
-                };
-
-                zing = zingchart.render({
-                    id:'chartDiv',
-                    height:400,
-                    width:600,
-                    dataurl: '/test/' + test_id() + '/request/stats/chart/line/json'
-                });
-
-
-
-                //updatePolarAreaChartInteval = setInterval(updateChart(polarAreaChart), 10000)
-                //updateBarChartInterval = setInterval(updateChart(barChart), 10000)
-
-            }
-        }
-    );
-});
-
-$('#edit_form').submit(function(event) {
-    event.preventDefault();
-    $.post($(this).attr("action"), $(this).serialize(),
-        function(response) {
-            if (response.success) {
-                $("body").attr("class", "hatching");
-                $("#edit").fadeOut();
-            }
-        }
-    );
-});
 $( document ).ready(function(){
+    $('#swarm_form').submit(function(event) {
+        event.preventDefault();
+        $.post($(this).attr("action"), $(this).serialize(),
+            function(response) {
+                if (response.success) {
+                    $("body").attr("class", "hatching");
+                    $("#start").fadeOut();
+                    $("#status").fadeIn();
+                    $(".box_running").fadeIn();
+                    $("a.new_test").fadeOut();
+                    $("li.edit_test").fadeIn();
+                    $(".user_count").fadeIn();
+                    $(".wrapper").fadeIn();
+                    //polarAreaChart = createPolarArea("polarArea", polarData);
+                    barChart = createChart("bar", "bar", barChartData);
+                    radarChart = createChart("radar", "radar", radarChartData);
+                    latencyBarChart = createChart("bar", "latencyBar", latencyBarChartData);
+
+                    $("#bar").on("update", function(event, data){
+                        barChart.datasets[0].bars[0].value = data.success_request;
+                        barChart.datasets[0].bars[1].value = data.failures;
+                        barChart.update();
+                    });
+
+                    $("#radar").on("update", function(event, data){
+                        $.each(data.stats, function(key, report_value){
+                            if(report_value.name !== "Total"){
+                                updateRadarChart(report_value);
+                            }
+                        });
+                    });
+
+                    $("#latencyBar").on("update", function(event, data){
+                        $.each(data.stats, function(key, report_value){
+                            if(report_value.name !== "Total"){
+                                updateLatencyBarChart(report_value)
+                            }
+                        });
+                    });
+                    var chartData={
+                        "type": "bar",
+                        "series": [
+                            { "values": [35, 42, 67, 89] },
+                            { "values": [28, 57, 43, 56] }
+                        ]
+                    };
+
+                    zing = zingchart.render({
+                        id:'chartDiv',
+                        height:400,
+                        width:600,
+                        dataurl: '/test/' + test_id() + '/request/stats/chart/line/json'
+                    });
+                }
+            }
+        );
+    });
+
+    $('#edit_form').submit(function(event) {
+        event.preventDefault();
+        $.post($(this).attr("action"), $(this).serialize(),
+            function(response) {
+                if (response.success) {
+                    $("body").attr("class", "hatching");
+                    $("#edit").fadeOut();
+                }
+            }
+        );
+    });
+
+    $("#stop_test").click(function(event){
+        event.preventDefault();
+        $.get($(this).data("action"));
+        $("body").attr("class", "stopped");
+        $(".box_stop").hide();
+        $("a.new_test").show();
+        $("a.edit_test").hide();
+        $(".user_count").hide();
+    });
+
+    $("#box_stop").find("a").click(function(event) {
+        event.preventDefault();
+        $.get($(this).attr("href"));
+        $("body").attr("class", "stopped");
+        $(".box_stop").hide();
+        $("a.new_test").show();
+        $("a.edit_test").hide();
+        $(".user_count").hide();
+    });
+
+    $("#box_reset").find("a").click(function(event) {
+        event.preventDefault();
+        $.get($(this).attr("href"));
+    });
+
+    $("#new_test").click(function(event) {
+        event.preventDefault();
+        $("#start").show();
+        $("#locust_count").focus().select();
+    });
+
+    $(".edit_test").click(function(event) {
+        event.preventDefault();
+        $("#edit").show();
+        $("#new_locust_count").focus().select();
+    });
+
+    $(".close_link").click(function(event) {
+        event.preventDefault();
+        $(this).parent().parent().hide();
+    });
+
     $('#refresh').click(function(event) {
         event.preventDefault();
         $.get('/reload-tests',
@@ -151,7 +147,6 @@ $( document ).ready(function(){
         );
     });
 });
-
 
 var sortBy = function(field, reverse, primer){
     reverse = (reverse) ? -1 : 1;
