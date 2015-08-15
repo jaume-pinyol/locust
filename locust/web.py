@@ -11,7 +11,7 @@ import logging
 
 from gevent import wsgi
 
-from flask import Flask, make_response, request, render_template
+from flask import Flask, make_response, request, render_template, url_for, redirect
 import sys
 from folders import find_all_test_in_folder, parse_options
 
@@ -34,20 +34,7 @@ valid_chart_types = ["bar", "line"]
 @app.route('/')
 def index():
     # TODO redirect to "/test/{}".formt(getRunner().selected_locust)
-    is_distributed = isinstance(runners.locust_runner, MasterLocustRunner)
-    if is_distributed:
-        slave_count = runners.locust_runner.slave_count
-    else:
-        slave_count = 0
-
-    return render_template("index.html",
-                           state=runners.locust_runner.state,
-                           is_distributed=is_distributed,
-                           slave_count=slave_count,
-                           user_count=runners.locust_runner.user_count,
-                           version=version,
-                           files=runners.locust_runner.files
-                           )
+    return redirect("/test/{}".format(get_runners().selected_locust))
 
 
 @app.route("/reload-tests")
@@ -422,4 +409,3 @@ def get_runner(test_id):
 def get_runners():
     return runners.locust_runner
     # return runners.locust_runner.runner_collector.runners
-
