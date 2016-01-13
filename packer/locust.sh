@@ -23,11 +23,10 @@ sudo chmod 755 /usr/local/bin/*
 sudo pip install pyzmq
 #sudo pip install locustio
 
-sudo pip install https://github.com/jaume-pinyol/locust/zipball/master
+sudo pip install https://github.com/jaume-pinyol/locust/zipball/master-schibsted
 cd /tmp && tar -xzvf locust.tar.gz
 cd locust
 sudo python setup.py build
 sudo python setup.py install
-
 
 sleep 1
