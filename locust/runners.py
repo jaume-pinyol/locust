@@ -79,8 +79,6 @@ class LocustRunner(object):
         self.files = tests_in_locust_folder
         if self.selected_locust not in self.files:
             self.selected_locust = tests_in_locust_folder.keys()[0]
-        data = {"refresh": True}
-        self.server.send(Message("refresh", data, None))
         return self.selected_locust
 
     def weight_locusts(self, amount, stop_timeout=None):
@@ -405,6 +403,10 @@ class MasterLocustRunner(DistributedLocustRunner):
     def slave_count(self):
         return len(self.clients.ready) + len(self.clients.hatching) + len(self.clients.running)
 
+    def reload_tests(self):
+        super(MasterLocustRunner, self).reload_tests()
+        data = {"refresh": True}
+        self.server.send(Message("refresh", data, None))
 
 class SlaveLocustRunner(DistributedLocustRunner):
     def __init__(self, *args, **kwargs):
