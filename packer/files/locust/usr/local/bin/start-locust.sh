@@ -26,3 +26,7 @@ ulimit -l 131072
 ulimit -c "unlimited"
 echo 1 > /proc/sys/net/ipv4/tcp_tw_reuse
 nohup /usr/local/bin/locust $LOCUST_ARGS > $LOCUST_LOG &
+if [ "$LOCUST_TAG_VALUE" == "slave" ]; then
+nohup /usr/local/bin/locust $LOCUST_ARGS > $LOCUST_LOG &
+nohup /usr/local/bin/locust $LOCUST_ARGS > $LOCUST_LOG &
+fi

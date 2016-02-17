@@ -11,7 +11,7 @@ import logging
 
 from gevent import wsgi
 
-from flask import Flask, make_response, request, render_template, url_for, redirect
+from flask import Flask, make_response, request, render_template, redirect
 import sys
 from folders import find_all_test_in_folder, parse_options
 
@@ -33,7 +33,6 @@ valid_chart_types = ["bar", "line"]
 
 @app.route('/')
 def index():
-    # TODO redirect to "/test/{}".formt(getRunner().selected_locust)
     return redirect("/test/{}".format(get_runners().selected_locust))
 
 

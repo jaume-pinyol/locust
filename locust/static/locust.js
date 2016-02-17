@@ -19,9 +19,6 @@ var latencyBarChart = null;
 var barChart = null;
 
 var radarChart = null;
-var polarAreaChart = null;
-var updateBarChartInterval = null;
-var updatePolarAreaChartInteval = null;
 var zing = null;
 $( document ).ready(function(){
     $('#swarm_form').submit(function(event) {
@@ -202,18 +199,6 @@ function updateStats() {
 
 
         if($("#status").is(':visible')){
-            /*if(barChart == null){
-                barChart = createChart("bar", "bar", barChartData, barCharConf);
-            }
-
-            if(latencyBarChart == null){
-                 latencyBarChart = createChart("bar", "latencyBar", latencyBarChartData, barCharConf);
-            }
-
-            if(radarChart == null){
-                radarChart = createChart("radar", "radar", radarChartData, radarChartConf);
-            }*/
-
             $("#bar").trigger("update", {
                 "success_request" : success_request,
                 "failures":  failures
@@ -226,18 +211,6 @@ function updateStats() {
             $("#radar").trigger("update", {
                 "stats": report.stats
             });
-
-
-            /*barChart.datasets[0].bars[0].value = success_request;
-            barChart.datasets[0].bars[1].value = failures;
-            barChart.update();
-
-            $.each(report.stats, function(key, report_value){
-                if(report_value.name !== "Total"){
-                    updateRadarChart(report_value);
-                    updateLatencyBarChart(report_value)
-                }
-            });*/
         }
         $("#total_rps").html(total_rps);
         $("#total_requests").html(total_requests);
@@ -263,7 +236,7 @@ function updateStats() {
         statsSelector.find('tbody').jqoteapp(stats_tpl, sortedStats);
         alternate = false;
         errorSelector.find('tbody').jqoteapp(errors_tpl, (report.errors).sort(sortBy(sortAttribute, desc)));
-        setTimeout(updateStats, 5000);
+        setTimeout(updateStats, 20000);
     });
 }
 updateStats();
@@ -277,7 +250,7 @@ function updateExceptions() {
     $.get('/test/' + test_id() + '/exceptions', function (data) {
         $("#exceptions").find("tbody").empty();
         $("#exceptions").find("tbody").jqoteapp(exceptions_tpl, data.exceptions);
-        setTimeout(updateExceptions, 5000);
+        setTimeout(updateExceptions, 20000);
     });
 }
 updateExceptions();

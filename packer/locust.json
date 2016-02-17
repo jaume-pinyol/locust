@@ -8,8 +8,8 @@
 		"ec2_ssh_username": "ec2-user",
 		"ec2_ssh_timeout": "7m",
 		"basename": "locust",
-		"creation_time": "20150612",
-		"appversion": "0.4.8",
+		"creation_time": "20160125",
+		"appversion": "0.5.0",
 		"creator": "jaume.pinyol@schibsted.com"
 	},
 	"builders": [
@@ -27,6 +27,7 @@
 			"name": "{{user `basename`}}-{{user `appversion`}}",
 			"ami_virtualization_type": "hvm",
 			"enhanced_networking": "true",
+			"ssh_pty": true,
 			"tags": {
 				"Name": "{{user `basename`}}-{{ isotime \"20060102150405\"}} (builder)",
 				"appversion": "{{user `appversion`}}",
