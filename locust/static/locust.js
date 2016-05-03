@@ -5,8 +5,6 @@ $(window).ready(function() {
     }
 });
 
-
-
 var alternate = false;
 
 $("#status").tabs();
@@ -18,8 +16,6 @@ var exceptions_tpl = $('#exceptions-template');
 var latencyBarChart = null;
 var barChart = null;
 
-var radarChart = null;
-var zing = null;
 $( document ).ready(function(){
     $('#swarm_form').submit(function(event) {
         event.preventDefault();
@@ -36,21 +32,18 @@ $( document ).ready(function(){
                     $(".wrapper").fadeIn();
                     //polarAreaChart = createPolarArea("polarArea", polarData);
                     barChart = createChart("bar", "bar", barChartData);
-                    radarChart = createChart("radar", "radar", radarChartData);
                     latencyBarChart = createChart("bar", "latencyBar", latencyBarChartData);
+
+                    var chart = d3.select(".d3charts")
+                        .append("svg:svg")
+                        .attr("class", "chart")
+                        .attr("width", 420)
+                        .attr("height", 20 * 2);
 
                     $("#bar").on("update", function(event, data){
                         barChart.datasets[0].bars[0].value = data.success_request;
                         barChart.datasets[0].bars[1].value = data.failures;
                         barChart.update();
-                    });
-
-                    $("#radar").on("update", function(event, data){
-                        $.each(data.stats, function(key, report_value){
-                            if(report_value.name !== "Total"){
-                                updateRadarChart(report_value);
-                            }
-                        });
                     });
 
                     $("#latencyBar").on("update", function(event, data){
@@ -60,20 +53,10 @@ $( document ).ready(function(){
                             }
                         });
                     });
-                    var chartData={
-                        "type": "bar",
-                        "series": [
-                            { "values": [35, 42, 67, 89] },
-                            { "values": [28, 57, 43, 56] }
-                        ]
-                    };
 
-                    zing = zingchart.render({
-                        id:'chartDiv',
-                        height:400,
-                        width:600,
-                        dataurl: '/test/' + test_id() + '/request/stats/chart/line/json'
-                    });
+                    /*$(".chart").on("update", function(event, data){
+                        updateS3BarChart(chart, [data.success_request, data.failures]);
+                    });*/
                 }
             }
         );
@@ -94,21 +77,25 @@ $( document ).ready(function(){
     $("#stop_test").click(function(event){
         event.preventDefault();
         $.get($(this).data("action"));
-        $("body").attr("class", "stopped");
+        /*$("body").attr("class", "stopped");
         $(".box_stop").hide();
         $("a.new_test").show();
         $("a.edit_test").hide();
-        $(".user_count").hide();
+        $(".user_count").hide();*/
+        stop();
     });
+
+
 
     $("#box_stop").find("a").click(function(event) {
         event.preventDefault();
         $.get($(this).attr("href"));
-        $("body").attr("class", "stopped");
+        /*$("body").attr("class", "stopped");
         $(".box_stop").hide();
         $("a.new_test").show();
         $("a.edit_test").hide();
-        $(".user_count").hide();
+        $(".user_count").hide();*/
+        stop();
     });
 
     $("#box_reset").find("a").click(function(event) {
@@ -190,12 +177,13 @@ var test_id = function(){
 function updateStats() {
     $.get('/test/' + test_id() + '/stats/requests', function (data) {
         report = JSON.parse(data);
-        var total_rps = Math.round(report.total_rps*100)/100;
-        var fail_ratio = Math.round(report.fail_ratio*100);
+        var total_rps = Math.round(report.total_rps * 100) / 100;
+        var fail_ratio = Math.round(report.fail_ratio * 100);
         var totalPosition = report.stats.length -1;
         var total_requests = report.stats[totalPosition].num_requests;
         var failures = report.stats[totalPosition].num_failures;
         var success_request = total_requests - failures;
+        var state = report.state;
 
 
         if($("#status").is(':visible')){
@@ -208,19 +196,18 @@ function updateStats() {
                 "stats": report.stats
             });
 
-            $("#radar").trigger("update", {
-                "stats": report.stats
-            });
+            /*$(".chart").trigger("update", {
+                "success_request" : success_request,
+                "failures":  failures
+            });*/
         }
         $("#total_rps").html(total_rps);
-        $("#total_requests").html(total_requests);
-
         $("#fail_ratio").html(fail_ratio);
         $("#status_text").html(report.state);
         $("#userCount").html(report.user_count);
 
         if (typeof report.slave_count !== "undefined")
-            $("#slaveCount").html(report.slave_count)
+            $("#slaveCount").html(report.slave_count);
 
         var errorSelector = $("#errors");
         var statsSelector = $("#stats");
@@ -236,15 +223,25 @@ function updateStats() {
         statsSelector.find('tbody').jqoteapp(stats_tpl, sortedStats);
         alternate = false;
         errorSelector.find('tbody').jqoteapp(errors_tpl, (report.errors).sort(sortBy(sortAttribute, desc)));
-        setTimeout(updateStats, 20000);
+
+        if (state != "stopped") {
+            setTimeout(updateStats, 5000);
+        } else {
+            stop();
+        }
     });
 }
+
 updateStats();
 
-function updateChart(chart){
-    chart.update();
-}
 
+function stop() {
+    $("body").attr("class", "stopped");
+    $(".box_stop").hide();
+    $("a.new_test").show();
+    $("a.edit_test").hide();
+    $(".user_count").hide();
+}
 
 function updateExceptions() {
     $.get('/test/' + test_id() + '/exceptions', function (data) {
@@ -253,6 +250,7 @@ function updateExceptions() {
         setTimeout(updateExceptions, 20000);
     });
 }
+
 updateExceptions();
 
 function createChart(type, id, data, conf){
@@ -280,55 +278,6 @@ function createChart(type, id, data, conf){
     return chart;
 }
 
-function updateRadarChart(data) {
-    var average_latency = data.avg_response_time;
-    var media_latency = data.median_response_time;
-    var max_latency = data.max_response_time;
-    var min_latency = data.min_response_time;
-    var found = false;
-    for(i = 0;  i < radarChart.datasets.length; i++){
-        //console.log(radarChart.datasets[i].label + "==" +  data.name);
-        if(radarChart.datasets[i].label == data.name){
-            radarChart.datasets[i].points[0].value = average_latency;
-            radarChart.datasets[i].points[1].value = max_latency;
-            radarChart.datasets[i].points[2].value = min_latency;
-            radarChart.datasets[i].points[3].value = media_latency;
-            found = true;
-        }
-        //console.log(radarChart.datasets[i].label + "==" +  data.name + " found=" + found);
-    }
-
-    if(!found){
-        var position = radarChartData.datasets.length;
-        if(radarChartData.datasets.length == 1 && radarChartData.datasets[0].label == "default"){
-            position = 0;
-        }
-        //console.log("adding new node " + data.name);
-        radarChartData.datasets[position] = generateNewRadarDataset({
-            label: data.name,
-            fillColor: generate_random_color_rgba(generate_random_color_hex(), 40),
-            strokeColor: generate_random_color_rgba(generate_random_color_hex(), 30),
-            values: [average_latency, max_latency, min_latency, media_latency]
-        });
-        radarChart = createChart("radar", radarChart.id, radarChartData);
-    } else{
-        radarChart.update();
-    }
-}
-
-function generateNewRadarDataset(dataset){
-    return {
-            label: dataset.label,
-            fillColor: dataset.fillColor,
-            strokeColor: dataset.strokeColor,
-            pointColor: "rgba(220,220,220,1)",
-            pointStrokeColor: "#fff",
-            pointHighlightFill: "#fff",
-            pointHighlightStroke: "rgba(220,220,220,1)",
-            data: [dataset.values[0], dataset.values[1], dataset.values[2], dataset.values[3]]
-        };
-}
-
 function generateNewBarDataset(dataset){
     return {
         label: dataset.label,
@@ -340,6 +289,39 @@ function generateNewBarDataset(dataset){
     };
 }
 
+function updateS3BarChart(chart, data) {
+    var x = d3.scale.linear()
+        .domain([0, d3.max(data)])
+        .range([0, 420]);
+
+    chart.selectAll("rect")
+        .data(data).enter()
+        .append("svg:rect").attr("y", function(d, i) { return i * 20; })
+        .attr("width", x)
+        .attr("height", 20);
+
+    var y = d3.scale.ordinal()
+        .domain(data)
+        .rangeBands([0, 120]);
+
+    chart.selectAll("rect")
+        .data(data).enter()
+        .append("svg:rect")
+        .attr("y", y)
+        .attr("width", x)
+        .attr("height", y.rangeBand());
+
+    chart.selectAll("text")
+        .data(data)
+        .enter()
+        .append("svg:text").attr("x", x)
+        .attr("y", function(d) { return y(d) + y.rangeBand() / 2; })
+        .attr("dx", -3) // padding-right
+        .attr("dy", ".35em") // vertical-align: middle
+        .attr("text-anchor", "end") // text-align: right
+        .text(String);
+}
+
 function updateLatencyBarChart(data) {
     var average_latency = data.avg_response_time;
     var media_latency = data.median_response_time;
@@ -347,7 +329,6 @@ function updateLatencyBarChart(data) {
     var min_latency = data.min_response_time;
     var found = false;
     for(i = 0;  i < latencyBarChart.datasets.length; i++){
-        //console.log(radarChart.datasets[i].label + "==" +  data.name);
         if(latencyBarChart.datasets[i].label == data.name){
             latencyBarChart.datasets[i].bars[0].value = average_latency;
             latencyBarChart.datasets[i].bars[1].value = max_latency;
@@ -355,7 +336,6 @@ function updateLatencyBarChart(data) {
             latencyBarChart.datasets[i].bars[3].value = media_latency;
             found = true;
         }
-        //console.log(radarChart.datasets[i].label + "==" +  data.name + " found=" + found);
     }
 
     if(!found){

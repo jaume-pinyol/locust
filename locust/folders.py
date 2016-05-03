@@ -116,7 +116,7 @@ def find_all_test_in_folder(locust_directory):
     for root, directories, files in os.walk(locust_directory):
         for filename in files:
             # Join the two strings in order to form the full filepath.
-            if filename.endswith('.py'):
+            if filename.endswith('.py') and filename.startswith("test"):
                 file_path = os.path.join(root, filename)
                 locust = {"id": filename, "filename": filename, "locust": load_locustfile(file_path)}
                 tests[filename] = locust  # Add it to the list.

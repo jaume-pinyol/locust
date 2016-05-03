@@ -61,6 +61,12 @@ class LocustRunner(object):
     def user_count(self):
         return len(self.locusts)
 
+    def get_num_requests(self):
+        return self.num_requests
+
+    def set_num_requests(self, num_requests):
+        self.num_requests = num_requests
+
     def reload_tests(self):
         parser, options, arguments = parse_options()
         tests_in_locust_folder = find_all_test_in_folder(self.test_folder)
@@ -407,6 +413,7 @@ class MasterLocustRunner(DistributedLocustRunner):
         super(MasterLocustRunner, self).reload_tests()
         data = {"refresh": True}
         self.server.send(Message("refresh", data, None))
+
 
 class SlaveLocustRunner(DistributedLocustRunner):
     def __init__(self, *args, **kwargs):

@@ -17,7 +17,7 @@ from folders import find_all_test_in_folder, parse_options
 
 from locust import runners
 from locust.cache import memoize
-from locust.runners import MasterLocustRunner, LocalLocustRunner
+from locust.runners import MasterLocustRunner, LocalLocustRunner, STATE_RUNNING
 from locust.stats import median_from_dict
 from locust import version
 
@@ -105,6 +105,8 @@ def swarm_test(test_id):
 def swarm(runner, request):
     locust_count = int(request.form["locust_count"])
     hatch_rate = float(request.form["hatch_rate"])
+    max_requests = int(request.form["num_requests"])
+    runner.set_num_requests(max_requests)
     runner.start_hatching(locust_count, hatch_rate)
     response = make_response(json.dumps({'success': True, 'message': 'Swarming started'}))
     response.headers["Content-type"] = "application/json"
@@ -323,6 +325,12 @@ def generate_report(runner):
     if is_distributed:
         report["slave_count"] = runner.slave_count
 
+    num_requests = get_total_stats(stats)["num_requests"]
+    logger.info("Checking if num_requests above max_requests {} => {}".format(num_requests, runner.get_num_requests()))
+    if runner.get_num_requests() is not None and runner.state == STATE_RUNNING and num_requests >= runner.get_num_requests():
+        logger.info("Stopping tests")
+        stop(runners.locust_runner)
+
     report["state"] = runner.state
     report["user_count"] = runner.user_count
     return report
@@ -331,6 +339,12 @@ def generate_report(runner):
 def request_stats(runner):
     return json.dumps(generate_report(runner))
 
+
+def get_total_stats(stats):
+    for stat in stats:
+        if stat["name"] == "Total":
+            return stat
+    return None
 
 @app.route("/exceptions")
 def exceptions_single():

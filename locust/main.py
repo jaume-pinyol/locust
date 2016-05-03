@@ -342,6 +342,7 @@ def main():
     def shutdown(code=0):
         """
         Shut down locust by firing quitting event, printing stats and exiting
+        :param code:
         """
         logger.info("Shutting down (exit code %s), bye." % code)
 

@@ -1,7 +1,6 @@
 <nav class="navbar navbar-default">
     <div class="container-fluid">
     <div class="navbar-header">
-        <button id="refresh" class="btn btn-primary"><span class="glyphicon glyphicon-refresh"></span> Refresh</button>
         <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
             <img src="/static/img/logo.png" class="logo" onclick="$('.about').fadeIn();" />
             <span class="sr-only">Toggle navigation</span>
@@ -13,6 +12,9 @@
         </div>
         <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
             <ul class="nav navbar-nav">
+                <li>
+                    <button id="refresh" class="btn btn-default navbar-btn"><span class="glyphicon glyphicon-refresh"></span></button>
+                </li>
                 <li class="dropdown">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         {% if files %}
@@ -61,7 +63,7 @@
                     <div class="value"><span id="fail_ratio"></span>%</div>
                 </li>
                 <li class="top_box box_stop box_running" id="box_stop">
-                    <button id="stop_test" data-action="/test/{{ selected }}/stop" type="button" class="btn btn-primary">Stop</button>
+                    <button id="stop_test" data-action="/test/{{ selected }}/stop" type="button" class="btn btn-primary navbar-btn">Stop</button>
                 </li>
                 <li class="top_box box_stop box_running" id="box_reset">
                     <a href="/test/{{ selected }}/stats/reset">Reset Stats</a>

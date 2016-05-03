@@ -1,5 +1,3 @@
-
-
 .top_box {
     float: left;
     border-left: 1px solid #d9d9d9;
@@ -128,4 +126,17 @@ ul.tabs li {
 
 .wrapper{
     display: none;
+}
+
+.chart rect {
+   stroke: white;
+   fill: steelblue;
+}
+.chart div {
+   font: 10px sans-serif;
+   background-color: steelblue;
+   text-align: right;
+   padding: 3px;
+   margin: 1px;
+   color: white;
 }
