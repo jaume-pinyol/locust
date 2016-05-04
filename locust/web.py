@@ -327,7 +327,9 @@ def generate_report(runner):
 
     num_requests = get_total_stats(stats)["num_requests"]
     logger.info("Checking if num_requests above max_requests {} => {}".format(num_requests, runner.get_num_requests()))
-    if runner.get_num_requests() is not None and runner.state == STATE_RUNNING and num_requests >= runner.get_num_requests():
+    if runner.get_num_requests() is not None\
+            and runner.state == STATE_RUNNING \
+            and num_requests >= runner.get_num_requests():
         logger.info("Stopping tests")
         stop(runners.locust_runner)
 
@@ -345,6 +347,7 @@ def get_total_stats(stats):
         if stat["name"] == "Total":
             return stat
     return None
+
 
 @app.route("/exceptions")
 def exceptions_single():
